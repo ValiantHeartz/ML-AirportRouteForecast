@@ -1,0 +1,3999 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.145351171494\n",
+      "21330\n",
+      "0.0858280658722\n",
+      "17932\n"
+     ]
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "import pickle\n",
+    "import numpy as np\n",
+    "import time\n",
+    "st = time.time()\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/share_visit.pickle') as f:\n",
+    "    share_visit_filter_10000=pickle.load(f)\n",
+    "print time.time() - st\n",
+    "print len(share_visit_filter_10000)\n",
+    "share_visit = share_visit_filter_10000\n",
+    "import time\n",
+    "st = time.time()\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/negtive.pickle') as f:\n",
+    "    negtive=pickle.load(f)\n",
+    "print time.time() - st\n",
+    "print len(negtive)\n",
+    "share_list = [x.split('#') + [share_visit[x]] for x in share_visit]\n",
+    "data = pd.DataFrame(share_list,columns = ['bid1','bid2','share_num'])\n",
+    "data['label'] = 1\n",
+    "negtive = [x.split('#') for x in negtive]\n",
+    "data1= pd.DataFrame(negtive,columns = ['bid1','bid2'])\n",
+    "data1['share_num'] = 0\n",
+    "data1['label'] = 0\n",
+    "data = pd.concat((data,data1))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 4)\n"
+     ]
+    }
+   ],
+   "source": [
+    "data = data.reset_index(drop=True)\n",
+    "print data.shape\n",
+    "data.tail()\n",
+    "data_cut = data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from shapely.geometry import Point"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 13)\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style>\n",
+       "    .dataframe thead tr:only-child th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: left;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>bid1</th>\n",
+       "      <th>bid2</th>\n",
+       "      <th>share_num</th>\n",
+       "      <th>label</th>\n",
+       "      <th>dis</th>\n",
+       "      <th>bid1_tag1</th>\n",
+       "      <th>bid2_tag1</th>\n",
+       "      <th>bid1_tag2</th>\n",
+       "      <th>bid2_tag2</th>\n",
+       "      <th>bid1_loc1</th>\n",
+       "      <th>bid1_loc2</th>\n",
+       "      <th>bid2_loc1</th>\n",
+       "      <th>bid2_loc2</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>1261398583068852223</td>\n",
+       "      <td>15754384686349246450</td>\n",
+       "      <td>14</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1596.932695</td>\n",
+       "      <td>美食</td>\n",
+       "      <td>美食</td>\n",
+       "      <td>中餐厅</td>\n",
+       "      <td>中餐厅</td>\n",
+       "      <td>12969494.76</td>\n",
+       "      <td>4808920.76</td>\n",
+       "      <td>12970784.18</td>\n",
+       "      <td>4809862.88</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>1266464690268012543</td>\n",
+       "      <td>1266561245427793919</td>\n",
+       "      <td>5</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1418.848770</td>\n",
+       "      <td>购物</td>\n",
+       "      <td>购物</td>\n",
+       "      <td>超市</td>\n",
+       "      <td>超市</td>\n",
+       "      <td>12948343.92</td>\n",
+       "      <td>4817465.31</td>\n",
+       "      <td>12949485.42</td>\n",
+       "      <td>4816622.63</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>1260297628332064767</td>\n",
+       "      <td>1266418708348141567</td>\n",
+       "      <td>12</td>\n",
+       "      <td>1</td>\n",
+       "      <td>1299.227377</td>\n",
+       "      <td>酒店</td>\n",
+       "      <td>酒店</td>\n",
+       "      <td>快捷酒店</td>\n",
+       "      <td>快捷酒店</td>\n",
+       "      <td>12953362.51</td>\n",
+       "      <td>4844432.46</td>\n",
+       "      <td>12952276.78</td>\n",
+       "      <td>4843718.89</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>1266631584107200511</td>\n",
+       "      <td>10262250638989006701</td>\n",
+       "      <td>5</td>\n",
+       "      <td>1</td>\n",
+       "      <td>9799.870485</td>\n",
+       "      <td>美食</td>\n",
+       "      <td>美食</td>\n",
+       "      <td>小吃快餐店</td>\n",
+       "      <td>小吃快餐店</td>\n",
+       "      <td>12987107.03</td>\n",
+       "      <td>4857249.03</td>\n",
+       "      <td>12979917.52</td>\n",
+       "      <td>4850589.57</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>15612544757557181497</td>\n",
+       "      <td>17739908138645583145</td>\n",
+       "      <td>13</td>\n",
+       "      <td>1</td>\n",
+       "      <td>3329.349735</td>\n",
+       "      <td>购物</td>\n",
+       "      <td>购物</td>\n",
+       "      <td>超市</td>\n",
+       "      <td>超市</td>\n",
+       "      <td>12948917.79</td>\n",
+       "      <td>4803358.46</td>\n",
+       "      <td>12951696.58</td>\n",
+       "      <td>4801524.64</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                   bid1                  bid2  share_num  label          dis  \\\n",
+       "0   1261398583068852223  15754384686349246450         14      1  1596.932695   \n",
+       "1   1266464690268012543   1266561245427793919          5      1  1418.848770   \n",
+       "2   1260297628332064767   1266418708348141567         12      1  1299.227377   \n",
+       "3   1266631584107200511  10262250638989006701          5      1  9799.870485   \n",
+       "4  15612544757557181497  17739908138645583145         13      1  3329.349735   \n",
+       "\n",
+       "  bid1_tag1 bid2_tag1 bid1_tag2 bid2_tag2    bid1_loc1   bid1_loc2  \\\n",
+       "0        美食        美食       中餐厅       中餐厅  12969494.76  4808920.76   \n",
+       "1        购物        购物        超市        超市  12948343.92  4817465.31   \n",
+       "2        酒店        酒店      快捷酒店      快捷酒店  12953362.51  4844432.46   \n",
+       "3        美食        美食     小吃快餐店     小吃快餐店  12987107.03  4857249.03   \n",
+       "4        购物        购物        超市        超市  12948917.79  4803358.46   \n",
+       "\n",
+       "     bid2_loc1   bid2_loc2  \n",
+       "0  12970784.18  4809862.88  \n",
+       "1  12949485.42  4816622.63  \n",
+       "2  12952276.78  4843718.89  \n",
+       "3  12979917.52  4850589.57  \n",
+       "4  12951696.58  4801524.64  "
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import numpy as np\n",
+    "from shapely.geometry import Point\n",
+    "from sklearn import preprocessing\n",
+    "from sklearn.preprocessing import LabelEncoder\n",
+    "from sklearn.preprocessing import OneHotEncoder\n",
+    "def get_dis(bid1,bid2):\n",
+    "    p1 = poi_dict[bid1]['loc']\n",
+    "    p2 = poi_dict[bid2]['loc']\n",
+    "    pp1 = [float(x) for x in p1]\n",
+    "    pp2 = [float(x) for x in p2]\n",
+    "    point1 = Point(pp1)\n",
+    "    point2 = Point(pp2)\n",
+    "    l = point1.distance(point2)\n",
+    "    return l\n",
+    "data_cut['dis'] = data_cut.apply(lambda x: get_dis(x['bid1'],x['bid2']),axis = 1)\n",
+    "data_cut['bid1_tag1'] = data_cut.apply(lambda x: poi_dict[x['bid1']]['std_tag'].split(';')[0],axis = 1)\n",
+    "data_cut['bid2_tag1'] = data_cut.apply(lambda x: poi_dict[x['bid2']]['std_tag'].split(';')[0],axis = 1)\n",
+    "data_cut['bid1_tag2'] = data_cut.apply(lambda x: poi_dict[x['bid1']]['std_tag'].split(';')[-1],axis = 1)\n",
+    "data_cut['bid2_tag2'] = data_cut.apply(lambda x: poi_dict[x['bid2']]['std_tag'].split(';')[-1],axis = 1)\n",
+    "data_cut = data_cut[data_cut['bid1_tag2'] != '']\n",
+    "data_cut = data_cut[data_cut['bid2_tag2'] != '']\n",
+    "data_cut = data_cut.reset_index(drop=True)\n",
+    "data_cut['bid1_loc1'] = data_cut.apply(lambda x: float(poi_dict[x['bid1']]['loc'][0]),axis = 1)\n",
+    "data_cut['bid1_loc2'] = data_cut.apply(lambda x: float(poi_dict[x['bid1']]['loc'][1]),axis = 1)\n",
+    "data_cut['bid2_loc1'] = data_cut.apply(lambda x: float(poi_dict[x['bid2']]['loc'][0]),axis = 1)\n",
+    "data_cut['bid2_loc2'] = data_cut.apply(lambda x: float(poi_dict[x['bid2']]['loc'][1]),axis = 1)\n",
+    "print data_cut.shape\n",
+    "data_cut.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "1200000 / 1204309 time:0.40 ss\r"
+     ]
+    }
+   ],
+   "source": [
+    "def poi_format(cons):\n",
+    "    bid = cons[0]\n",
+    "    name = cons[2]\n",
+    "    std_tag = cons[11]\n",
+    "    aoi_id = cons[13]\n",
+    "    aoi_name = cons[14]\n",
+    "    point_x = cons[19]\n",
+    "    point_y = cons[20]\n",
+    "    parent_id = cons[31]\n",
+    "    return {'bid':bid, 'name':name, 'std_tag':std_tag, \n",
+    "            'loc':(point_x,point_y), 'parent_id':parent_id,\n",
+    "           'aoi_id':aoi_id,' aoi_name':aoi_name}\n",
+    "import time\n",
+    "poi_file = '/home/bil/huangtao/project/data/poi_basic/poi_131/poi_131'\n",
+    "poi_dict = {}\n",
+    "flag = 1\n",
+    "st = time.time()\n",
+    "with open(poi_file) as f:\n",
+    "    for line in f:\n",
+    "        cons = eval(line)\n",
+    "        bid = cons[0]\n",
+    "        one_dict = poi_format(cons)\n",
+    "        poi_dict[bid] = one_dict\n",
+    "        if flag % 10000 == 0:\n",
+    "            t = time.time() - st\n",
+    "            print '%d / %d time:%.2f s\\r' %(flag,1204309,t*(1204309-flag)/flag),\n",
+    "        flag += 1"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# 构建图"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import pickle\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/co_map_filter.pickle','rb') as f:\n",
+    "    co_map_filter = pickle.load(f)#{town_id:[bids]}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import time\n",
+    "import pandas as pd\n",
+    "import numpy as np\n",
+    "import itertools\n",
+    "\n",
+    "class Edge(object):\n",
+    "    def __init__(self, start, end, label):\n",
+    "        self.label = str(label)\n",
+    "        self.start = start\n",
+    "        self.end = end\n",
+    "        self.str = self.__str__()\n",
+    "\n",
+    "    def __str__(self):\n",
+    "        return self.label \n",
+    "\n",
+    "\n",
+    "class Node(object):\n",
+    "    def __init__(self, name):\n",
+    "        self.name = name\n",
+    "        self.neighbors = set()\n",
+    "        self.neighbor2edges = {} # a dict of the form {node: [edge1, edge2, ...]}\n",
+    "        self.neighbor2edgesstr = {} # a dict of the form {node: [edge1.str, edge2.str, ...]}\n",
+    "        \n",
+    "    def __str__(self):\n",
+    "        return \"Node({})\".format(self.name)\n",
+    "\n",
+    "    def add_edge(self, edge):\n",
+    "        self.neighbors.add(edge.end)\n",
+    "        self.neighbor2edges[edge.end] = self.neighbor2edges.get(edge.end, []) + [edge]\n",
+    "        self.neighbor2edgesstr[edge.end] = self.neighbor2edgesstr.get(edge.end, []) + [edge.str]\n",
+    "        \n",
+    "class Graph(object):\n",
+    "    def __init__(self):\n",
+    "        self.nodes = {} # nodes are indexed by name\n",
+    "\n",
+    "    def get_node(self, name, create=False):\n",
+    "        if create and not name in self.nodes:\n",
+    "            self.nodes[name] = Node(name)\n",
+    "        return self.nodes[name]\n",
+    "\n",
+    "    def partial_build_from_df(self, df):\n",
+    "        \"\"\"Arguments:\n",
+    "        - `df` (pandas.DataFrame): DataFrame with three columns: head, tail and relation.\n",
+    "        Each row represents a triple in a knowledge graph.\n",
+    "        \"\"\"\n",
+    "        flag = 0\n",
+    "        l = len(df)\n",
+    "        for idx,row in df.iterrows():\n",
+    "            flag += 1\n",
+    "            head = self.get_node(row['head'], create=True)\n",
+    "            tail = self.get_node(row['tail'], create=True)\n",
+    "            relation = row['relation']\n",
+    "            head.add_edge(Edge(head, tail, relation))\n",
+    "            tail.add_edge(Edge(tail, head, relation))\n",
+    "            if flag % 1000 == 0:\n",
+    "                print '%d / %d\\r' %(flag, l),\n",
+    "    def partial_build_from_list(self, data_list):\n",
+    "        \"\"\"Arguments:\n",
+    "        - `df` (pandas.DataFrame): DataFrame with three columns: head, tail and relation.\n",
+    "        Each row represents a triple in a knowledge graph.\n",
+    "        \"\"\"\n",
+    "        flag = 0\n",
+    "        l = len(data_list)\n",
+    "        for pair in data_list:\n",
+    "            flag += 1\n",
+    "            bid1 = line[0]\n",
+    "            val = line[1]\n",
+    "            bid2 = line[2]\n",
+    "            head = self.get_node(bid1, create=True)\n",
+    "            tail = self.get_node(bid2, create=True)\n",
+    "            relation = val\n",
+    "            head.add_edge(Edge(head, tail, relation))\n",
+    "            tail.add_edge(Edge(tail, head, relation))\n",
+    "            if flag % 1000 == 0:\n",
+    "                print '%d / %d\\r' %(flag, l),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "3902000 / 3902181\r"
+     ]
+    }
+   ],
+   "source": [
+    "#---------------co_map的图----------\n",
+    "graph = Graph()\n",
+    "flag = 0\n",
+    "l = len(co_map_filter)\n",
+    "for pair in co_map_filter:\n",
+    "    flag += 1\n",
+    "    bid1 = pair.split('#')[0]\n",
+    "    bid2 = pair.split('#')[1]\n",
+    "    val = co_map_filter[pair].strip('\\n')\n",
+    "    head = graph.get_node(bid1, create=True)\n",
+    "    tail = graph.get_node(bid2, create=True)\n",
+    "    relation = val\n",
+    "    head.add_edge(Edge(head, tail, relation))\n",
+    "    tail.add_edge(Edge(tail, head, relation))\n",
+    "    if flag % 1000 == 0:\n",
+    "        print '%d / %d\\r' %(flag, l),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "3902181"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "len(co_map_filter)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "'''\n",
+    "all_index = range(len(data))\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "train_index,test_index = train_test_split(all_index,test_size=0.1,random_state=2)'''"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn import metrics"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 38,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def change_score(score, label):\n",
+    "    max_score = max(score)\n",
+    "    predict = [float(x)/max_score for x in score]\n",
+    "    p = predict\n",
+    "    predict = [int(x + 0.5) for x in predict]\n",
+    "    acc = metrics.accuracy_score(predict,label)\n",
+    "    max_acc = 0\n",
+    "    max_score = max(score)\n",
+    "    predict = [float(x)/max_score for x in score]\n",
+    "    res = []\n",
+    "    for i in range(20,80):\n",
+    "        j = float(i)/100\n",
+    "        t = [int(x + j) for x in p]\n",
+    "        acc1 = metrics.accuracy_score(t,label)\n",
+    "        if acc1 > max_acc:\n",
+    "            max_acc = acc1\n",
+    "            pp = t\n",
+    "    print 'acc:',acc,'max_acc:',max_acc\n",
+    "    return p,pp"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 42,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def get_score(t, p, pp):\n",
+    "    acc = metrics.accuracy_score(t,pp)\n",
+    "    f1 = metrics.f1_score(t,pp)\n",
+    "    auc = metrics.roc_auc_score(t,p)\n",
+    "    precision = metrics.precision_score(t,pp)\n",
+    "    recall = metrics.recall_score(t,pp)\n",
+    "    print 'acc: ',acc,'auc: ',auc,'f1_score: ',f1,'\\nprecision: ',precision, 'recall: ', recall\n",
+    "    return"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# model1:co-map_val"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "score = []\n",
+    "for i in range(len(data)):\n",
+    "    res = []\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    pair1 = bid2 + '#' + bid1\n",
+    "    if pair in co_map_filter:\n",
+    "        val = int(co_map_filter[pair].strip('\\n'))\n",
+    "    elif pair1 in co_map_filter:\n",
+    "        val = int(co_map_filter[pair1].strip('\\n'))\n",
+    "    else:\n",
+    "        val = 0\n",
+    "    score += [val]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 39,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.4574907034791911 max_acc: 0.4617441801232744\n"
+     ]
+    }
+   ],
+   "source": [
+    "p,pp = change_score(score, label)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 43,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.5425092965208089 max_acc: 0.5432224542814935\n"
+     ]
+    }
+   ],
+   "source": [
+    "l = [1-x for x in label]\n",
+    "p,pp = change_score(score, l)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 44,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.5432224542814935 auc:  0.3536510722018138 f1_score:  0.0 \n",
+      "precision:  0.0 recall:  0.0\n"
+     ]
+    }
+   ],
+   "source": [
+    "get_score(l,p,pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "collapsed": true
+   },
+   "source": [
+    "# PA"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 45,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "39200 / 39262                                                                                  \n"
+     ]
+    }
+   ],
+   "source": [
+    "score = []\n",
+    "for i in range(len(data)):\n",
+    "    val = 1.0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    try:\n",
+    "        head = graph.nodes[bid1]\n",
+    "        head_nears = head.neighbor2edgesstr\n",
+    "        for head_near in head_nears:\n",
+    "            val *= float(head_nears[head_near][0]) /10000.0\n",
+    "    except:\n",
+    "        val = 1.0\n",
+    "    try:\n",
+    "        tail = graph.nodes[bid2]\n",
+    "        tail_nears = tail.neighbor2edgesstr\n",
+    "        for tail_near in tail_nears:\n",
+    "            val *= float(tail_nears[tail_near][0]) / 10000.0\n",
+    "    except:\n",
+    "        pass\n",
+    "    if bid1 not in graph.nodes and bid2 not in graph.nodes:\n",
+    "        val = 0.0\n",
+    "    score += [val]\n",
+    "    if i % 100 == 0:print '\\r%d / %d' %(i, len(data)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 46,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.45672660587845754 max_acc: 0.4570067749987265\n",
+      "acc: 0.5432733941215424 max_acc: 0.5432988640415669\n",
+      "acc:  0.5432988640415669 auc:  0.5603408626368782 f1_score:  0.00011152623654714773 \n",
+      "precision:  1.0 recall:  5.5766227972339954e-05\n"
+     ]
+    }
+   ],
+   "source": [
+    "p,pp = change_score(score, label)\n",
+    "l = [1-x for x in label]\n",
+    "p,pp = change_score(score, l)\n",
+    "get_score(l,p,pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# CN"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 47,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "39200 / 39262                                                                                          \n"
+     ]
+    }
+   ],
+   "source": [
+    "score = []\n",
+    "for i in range(len(data)):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    try:\n",
+    "        head = graph.nodes[bid1]\n",
+    "        tail = graph.nodes[bid2]\n",
+    "    except:\n",
+    "        val = 0\n",
+    "        score += [val]\n",
+    "        continue\n",
+    "    head_nears = tail.neighbor2edgesstr\n",
+    "    tail_nears = tail.neighbor2edgesstr\n",
+    "    for head_near in head_nears:\n",
+    "        if head_near in tail_nears:\n",
+    "            val += int(head_nears[head_near][0])\n",
+    "    for tail_near in tail_nears:\n",
+    "        if tail_near in head_nears:\n",
+    "            val += int(tail_nears[tail_near][0])\n",
+    "    score += [val]\n",
+    "    if i % 100 == 0:print '\\r%d / %d' %(i, len(data)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 48,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.4594773572410983 max_acc: 0.47183026845295706\n",
+      "acc: 0.5405226427589017 max_acc: 0.5436299730018848\n",
+      "acc:  0.5436299730018848 auc:  0.4086741112620172 f1_score:  0.009508015478164732 \n",
+      "precision:  0.5443037974683544 recall:  0.004795895605621236\n"
+     ]
+    }
+   ],
+   "source": [
+    "p,pp = change_score(score, label)\n",
+    "l = [1-x for x in label]\n",
+    "p,pp = change_score(score, l)\n",
+    "get_score(l,p,pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# RA"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 49,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "39261 / 39262                                                                                                                                                                                                                                                                                                                                       \n"
+     ]
+    }
+   ],
+   "source": [
+    "score = []\n",
+    "for i in range(300):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    try:\n",
+    "        head = graph.nodes[bid1]\n",
+    "        tail = graph.nodes[bid2]\n",
+    "    except:\n",
+    "        val = 0\n",
+    "        score += [val]\n",
+    "        continue\n",
+    "    head_nears = tail.neighbor2edgesstr\n",
+    "    tail_nears = tail.neighbor2edgesstr\n",
+    "    for head_near in head_nears:\n",
+    "        if head_near in tail_nears:\n",
+    "            near_sum = int(head_nears[head_near][0]) + int(tail_nears[head_near][0])\n",
+    "            ex_sum = 0\n",
+    "            head_near_nears = head_near.neighbor2edgesstr\n",
+    "            for head_near_near in head_near_nears:\n",
+    "                ex_sum += int(head_near_nears[head_near_near][0])\n",
+    "            val += float(near_sum) / ex_sum\n",
+    "    score += [val]\n",
+    "    if i % 1 == 0:print '\\r%d / %d' %(i, len(data)),\n",
+    "\n",
+    "for i in range(len(data)-300,len(data)):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    try:\n",
+    "        head = graph.nodes[bid1]\n",
+    "        tail = graph.nodes[bid2]\n",
+    "    except:\n",
+    "        val = 0\n",
+    "        score += [val]\n",
+    "        continue\n",
+    "    head_nears = tail.neighbor2edgesstr\n",
+    "    tail_nears = tail.neighbor2edgesstr\n",
+    "    for head_near in head_nears:\n",
+    "        if head_near in tail_nears:\n",
+    "            near_sum = int(head_nears[head_near][0]) + int(tail_nears[head_near][0])\n",
+    "            ex_sum = 0\n",
+    "            head_near_nears = head_near.neighbor2edgesstr\n",
+    "            for head_near_near in head_near_nears:\n",
+    "                ex_sum += int(head_near_nears[head_near_near][0])\n",
+    "            val += float(near_sum) / ex_sum\n",
+    "    score += [val]\n",
+    "    if i % 1 == 0:print '\\r%d / %d' %(i, len(data)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 51,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.5066666666666667 max_acc: 0.515\n",
+      "acc: 0.49333333333333335 max_acc: 0.5183333333333333\n",
+      "acc:  0.5183333333333333 auc:  0.5422833333333333 f1_score:  0.20821917808219179 \n",
+      "precision:  0.5846153846153846 recall:  0.12666666666666668\n"
+     ]
+    }
+   ],
+   "source": [
+    "ls = [1]*300 + [0]*300\n",
+    "p,pp = change_score(score, ls)\n",
+    "l = [1-x for x in ls]\n",
+    "p,pp = change_score(score, l)\n",
+    "get_score(l,p,pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Jaccard"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 52,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "39261 / 39262            \n"
+     ]
+    }
+   ],
+   "source": [
+    "score = []\n",
+    "for i in range(1000):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    try:\n",
+    "        head = graph.nodes[bid1]\n",
+    "        tail = graph.nodes[bid2]\n",
+    "    except:\n",
+    "        val = 0\n",
+    "        score += [val]\n",
+    "        continue\n",
+    "    head_nears = tail.neighbor2edgesstr\n",
+    "    tail_nears = tail.neighbor2edgesstr\n",
+    "    ex_sum = 0\n",
+    "    for head_near in head_nears:\n",
+    "        ex_sum += int(head_nears[head_near][0])\n",
+    "    for tail_near in tail_nears:\n",
+    "        ex_sum += int(tail_nears[tail_near][0])\n",
+    "        \n",
+    "    for head_near in head_nears:\n",
+    "        if head_near in tail_nears:\n",
+    "            near_sum = int(head_nears[head_near][0]) + int(tail_nears[head_near][0])\n",
+    "            val += float(near_sum) / ex_sum\n",
+    "    score += [val]\n",
+    "    if i % 1 == 0:print '\\r%d / %d' %(i, len(data)),\n",
+    "\n",
+    "for i in range(len(data)-1000,len(data)):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    try:\n",
+    "        head = graph.nodes[bid1]\n",
+    "        tail = graph.nodes[bid2]\n",
+    "    except:\n",
+    "        val = 0\n",
+    "        score += [val]\n",
+    "        continue\n",
+    "    head_nears = tail.neighbor2edgesstr\n",
+    "    tail_nears = tail.neighbor2edgesstr\n",
+    "    ex_sum = 0\n",
+    "    for head_near in head_nears:\n",
+    "        ex_sum += int(head_nears[head_near][0])\n",
+    "    for tail_near in tail_nears:\n",
+    "        ex_sum += int(tail_nears[tail_near][0])\n",
+    "        \n",
+    "    for head_near in head_nears:\n",
+    "        if head_near in tail_nears:\n",
+    "            near_sum = int(head_nears[head_near][0]) + int(tail_nears[head_near][0])\n",
+    "            val += float(near_sum) / ex_sum\n",
+    "    score += [val]\n",
+    "    if i % 1 == 0:print '\\r%d / %d' %(i, len(data)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 54,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.5215 max_acc: 0.5215\n",
+      "acc:  0.5215 auc:  0.5397875 f1_score:  0.6716981132075471 \n",
+      "precision:  0.5112271540469974 recall:  0.979\n"
+     ]
+    }
+   ],
+   "source": [
+    "ls = [1]*1000 + [0]*1000\n",
+    "p,pp = change_score(score, ls)\n",
+    "get_score(ls,p,pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "#              word2vec"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 55,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import sys\n",
+    "import argparse\n",
+    "import numpy as np\n",
+    "import networkx as nx\n",
+    "from gensim.models import Word2Vec"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 56,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "val_list = []\n",
+    "for pair in co_map_filter:\n",
+    "    bid1 = pair.split('#')[0]\n",
+    "    bid2 = pair.split('#')[1]\n",
+    "    val = co_map_filter[pair].strip('\\n')\n",
+    "    val_list += [int(val)]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 57,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "182.82997047036002"
+      ]
+     },
+     "execution_count": 57,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "float(sum(val_list)) / len(val_list)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 58,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "co_map_nodevec = {}\n",
+    "val_list = []\n",
+    "for pair in co_map_filter:\n",
+    "    bid1 = pair.split('#')[0]\n",
+    "    bid2 = pair.split('#')[1]\n",
+    "    val = co_map_filter[pair].strip('\\n')\n",
+    "    if int(val) > 182:\n",
+    "        co_map_nodevec[pair] = co_map_filter[pair]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 59,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "702672 3902181\n"
+     ]
+    }
+   ],
+   "source": [
+    "print len(co_map_nodevec), len(co_map_filter)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 60,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "702000 / 702672\r"
+     ]
+    }
+   ],
+   "source": [
+    "#---------------co_map的图----------\n",
+    "G = nx.Graph()\n",
+    "flag = 0\n",
+    "l = len(co_map_nodevec)\n",
+    "for pair in co_map_nodevec:\n",
+    "    flag += 1\n",
+    "    bid1 = pair.split('#')[0]\n",
+    "    bid2 = pair.split('#')[1]\n",
+    "    val = co_map_filter[pair].strip('\\n')\n",
+    "    tag = poi_dict[bid1]['std_tag'].split(';')[0]\n",
+    "    G.add_node(int(bid1))  \n",
+    "    G.add_node(int(bid2))\n",
+    "    G.add_edge(int(bid1),int(bid2),weight=float(val))\n",
+    "    if flag % 1000 == 0:\n",
+    "        print '%d / %d\\r' %(flag, l),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 61,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import numpy as np\n",
+    "import networkx as nx\n",
+    "import random\n",
+    "\n",
+    "\n",
+    "class node2vecgraph():\n",
+    "    def __init__(self, nx_G, is_directed, p, q):\n",
+    "        self.G = nx_G\n",
+    "        self.is_directed = is_directed\n",
+    "        self.p = p\n",
+    "        self.q = q\n",
+    "\n",
+    "    def node2vec_walk(self, walk_length, start_node):\n",
+    "        '''\n",
+    "        Simulate a random walk starting from start node.\n",
+    "        '''\n",
+    "        G = self.G\n",
+    "        alias_nodes = self.alias_nodes\n",
+    "        alias_edges = self.alias_edges\n",
+    "\n",
+    "        walk = [start_node]\n",
+    "\n",
+    "        while len(walk) < walk_length:\n",
+    "            cur = walk[-1]\n",
+    "            cur_nbrs = sorted(G.neighbors(cur))\n",
+    "            if len(cur_nbrs) > 0:\n",
+    "                if len(walk) == 1:\n",
+    "                    walk.append(cur_nbrs[alias_draw(alias_nodes[cur][0], alias_nodes[cur][1])])\n",
+    "                else:\n",
+    "                    prev = walk[-2]\n",
+    "                    next = cur_nbrs[alias_draw(alias_edges[(prev, cur)][0], \n",
+    "                        alias_edges[(prev, cur)][1])]\n",
+    "                    walk.append(next)\n",
+    "            else:\n",
+    "                break\n",
+    "\n",
+    "        return walk\n",
+    "\n",
+    "    def simulate_walks(self, num_walks, walk_length):\n",
+    "        '''\n",
+    "        Repeatedly simulate random walks from each node.\n",
+    "        '''\n",
+    "        G = self.G\n",
+    "        walks = []\n",
+    "        nodes = list(G.nodes())\n",
+    "        print 'Walk iteration:'\n",
+    "        for walk_iter in range(num_walks):\n",
+    "            print str(walk_iter+1), '/', str(num_walks)\n",
+    "            random.shuffle(nodes)\n",
+    "            for node in nodes:\n",
+    "                walks.append(self.node2vec_walk(walk_length=walk_length, start_node=node))\n",
+    "\n",
+    "        return walks\n",
+    "\n",
+    "    def get_alias_edge(self, src, dst):\n",
+    "        '''\n",
+    "        Get the alias edge setup lists for a given edge.\n",
+    "        '''\n",
+    "        G = self.G\n",
+    "        unnormalized_probs = []\n",
+    "        for dst_nbr in sorted(G.neighbors(dst)):\n",
+    "            unnormalized_probs.append(G[dst][dst_nbr]['weight'])\n",
+    "        norm_const = sum(unnormalized_probs)\n",
+    "        normalized_probs =  [float(u_prob)/norm_const for u_prob in unnormalized_probs]\n",
+    "\n",
+    "        return alias_setup(normalized_probs)\n",
+    "\n",
+    "    def preprocess_transition_probs(self):\n",
+    "        '''\n",
+    "        Preprocessing of transition probabilities for guiding the random walks.\n",
+    "        '''\n",
+    "        G = self.G\n",
+    "        is_directed = self.is_directed\n",
+    "\n",
+    "        alias_nodes = {}\n",
+    "        flag = 0\n",
+    "        l = G.number_of_nodes()\n",
+    "        print 'building...'\n",
+    "        for node in G.nodes():\n",
+    "            flag+=1\n",
+    "            unnormalized_probs = [G[node][nbr]['weight'] for nbr in sorted(G.neighbors(node))]\n",
+    "            norm_const = sum(unnormalized_probs)\n",
+    "            normalized_probs =  [float(u_prob)/norm_const for u_prob in unnormalized_probs]\n",
+    "            alias_nodes[node] = alias_setup(normalized_probs)\n",
+    "            if flag % 10 == 0:\n",
+    "                print '\\r%d / %d' %(flag, l),\n",
+    "\n",
+    "        alias_edges = {}\n",
+    "        triads = {}\n",
+    "        print '\\nworking...'\n",
+    "        if is_directed:\n",
+    "            for edge in G.edges():\n",
+    "                alias_edges[edge] = self.get_alias_edge(edge[0], edge[1])\n",
+    "        else:\n",
+    "            l = G.number_of_edges()\n",
+    "            flag = 0\n",
+    "            for edge in G.edges():\n",
+    "                flag+=1\n",
+    "                alias_edges[edge] = self.get_alias_edge(edge[0], edge[1])\n",
+    "                alias_edges[(edge[1], edge[0])] = self.get_alias_edge(edge[1], edge[0])\n",
+    "                if flag % 100 == 0:\n",
+    "                    print '\\r%d / %d' %(flag, l),\n",
+    "        self.alias_nodes = alias_nodes\n",
+    "        self.alias_edges = alias_edges\n",
+    "\n",
+    "        return\n",
+    "\n",
+    "\n",
+    "def alias_setup(probs):\n",
+    "    '''\n",
+    "    Compute utility lists for non-uniform sampling from discrete distributions.\n",
+    "    Refer to https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/\n",
+    "    for details\n",
+    "    '''\n",
+    "    K = len(probs)\n",
+    "    q = np.zeros(K)\n",
+    "    J = np.zeros(K, dtype=np.int)\n",
+    "\n",
+    "    smaller = []\n",
+    "    larger = []\n",
+    "    for kk, prob in enumerate(probs):\n",
+    "        q[kk] = K*prob\n",
+    "        if q[kk] < 1.0:\n",
+    "            smaller.append(kk)\n",
+    "        else:\n",
+    "            larger.append(kk)\n",
+    "\n",
+    "    while len(smaller) > 0 and len(larger) > 0:\n",
+    "        small = smaller.pop()\n",
+    "        large = larger.pop()\n",
+    "\n",
+    "        J[small] = large\n",
+    "        q[large] = q[large] + q[small] - 1.0\n",
+    "        if q[large] < 1.0:\n",
+    "            smaller.append(large)\n",
+    "        else:\n",
+    "            larger.append(large)\n",
+    "\n",
+    "    return J, q\n",
+    "\n",
+    "def alias_draw(J, q):\n",
+    "    '''\n",
+    "    Draw sample from a non-uniform discrete distribution using alias sampling.\n",
+    "    '''\n",
+    "    K = len(J)\n",
+    "\n",
+    "    kk = int(np.floor(np.random.rand()*K))\n",
+    "    if np.random.rand() < q[kk]:\n",
+    "        return kk\n",
+    "    else:\n",
+    "        return J[kk]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 62,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "building...\n",
+      "129400 / 129403                              \n",
+      "working...\n",
+      "702600 / 702672                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \n"
+     ]
+    }
+   ],
+   "source": [
+    "Gn = node2vecgraph(G, False, 1, 1)\n",
+    "Gn.preprocess_transition_probs()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 63,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Walk iteration:\n",
+      "1 / 10\n",
+      "2 / 10\n",
+      "3 / 10\n",
+      "4 / 10\n",
+      "5 / 10\n",
+      "6 / 10\n",
+      "7 / 10\n",
+      "8 / 10\n",
+      "9 / 10\n",
+      "10 / 10\n"
+     ]
+    }
+   ],
+   "source": [
+    "walks = Gn.simulate_walks(10, 10)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 64,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def learn_embeddings(walks):\n",
+    "\t'''\n",
+    "\tLearn embeddings by optimizing the Skipgram objective using SGD.\n",
+    "\t'''\n",
+    "\twalks = [map(str, walk) for walk in walks]\n",
+    "\tmodel = Word2Vec(walks, size=128, window=10, min_count=0, sg=1, workers=8, iter=1)\n",
+    "\n",
+    "\treturn model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 65,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def cosine_similarity(vector1, vector2):\n",
+    "    dot_product = 0.0\n",
+    "    normA = 0.0\n",
+    "    normB = 0.0\n",
+    "    for a, b in zip(vector1, vector2):\n",
+    "        dot_product += a * b\n",
+    "        normA += a ** 2\n",
+    "        normB += b ** 2\n",
+    "    if normA == 0.0 or normB == 0.0:\n",
+    "        return 0\n",
+    "    else:\n",
+    "        return round(dot_product / ((normA**0.5)*(normB**0.5)) * 100, 2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 66,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "vector = learn_embeddings(walks)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 72,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/ipykernel_launcher.py:10: DeprecationWarning: Call to deprecated `__getitem__` (Method will be removed in 4.0.0, use self.wv.__getitem__() instead).\n",
+      "  # Remove the CWD from sys.path while we load stuff.\n",
+      "/home/bil/anaconda2/lib/python2.7/site-packages/ipykernel_launcher.py:14: DeprecationWarning: Call to deprecated `__getitem__` (Method will be removed in 4.0.0, use self.wv.__getitem__() instead).\n",
+      "  \n"
+     ]
+    }
+   ],
+   "source": [
+    "t = []\n",
+    "p = []\n",
+    "f = []\n",
+    "for i in range(len(data)):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    tag1 = poi_dict[bid1]['std_tag'].split(';')[0]\n",
+    "    try:\n",
+    "        m1 = vector[bid1]\n",
+    "    except:\n",
+    "        m1 = [0.0] * 128\n",
+    "    try:\n",
+    "        m2 = vector[bid2]\n",
+    "    except:\n",
+    "        m2 = [0.0] * 128\n",
+    "    cos = cosine_similarity(m1, m2)\n",
+    "    f += [list(m1) + list(m2)]\n",
+    "    p += [cos]\n",
+    "    t += [data.loc[i,'label']]    "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 73,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc: 0.5813254546380724 max_acc: 0.613086444908563\n",
+      "acc:  0.613086444908563 auc:  0.6916650457073914 f1_score:  0.686414961914002 \n",
+      "precision:  0.6132113746173422 recall:  0.7794655414908579\n"
+     ]
+    }
+   ],
+   "source": [
+    "p,pp = change_score(p, label)\n",
+    "get_score(label,p,pp)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 74,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "train_x = np.array(f)[train_index,:]\n",
+    "train_y = np.array(t)[train_index]\n",
+    "test_x = np.array(f)[test_index,:]\n",
+    "test_y = np.array(t)[test_index]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 75,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 256)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print np.array(f).shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 76,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "逻辑回归模型:\n",
+      "LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,\n",
+      "          intercept_scaling=1, max_iter=100, multi_class='ovr', n_jobs=1,\n",
+      "          penalty='l2', random_state=None, solver='liblinear', tol=0.0001,\n",
+      "          verbose=0, warm_start=False)\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn import metrics\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "model = LogisticRegression()\n",
+    "print '逻辑回归模型:\\n',model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 77,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.727782021899669\n"
+     ]
+    }
+   ],
+   "source": [
+    "model.fit(train_x,train_y)\n",
+    "score = model.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = model.predict(test_x)\n",
+    "acc = model.score(test_x,test_y)\n",
+    "print acc"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 84,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.727782021899669 auc:  0.7972701089560634 f1_score:  0.7474604299551146 \n",
+      "precision:  0.7371854613233924 recall:  0.7580258744609487\n"
+     ]
+    }
+   ],
+   "source": [
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# feature-MLP"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 22,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 2)\n"
+     ]
+    }
+   ],
+   "source": [
+    "data_cut = data\n",
+    "from sklearn import preprocessing\n",
+    "dis_scaled = preprocessing.scale(data_cut.loc[:,'dis'])\n",
+    "co_map_list = []\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    res = []\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    pair1 = bid2 + '#' + bid1\n",
+    "    if pair in co_map_filter:\n",
+    "        val = int(co_map_filter[pair].strip('\\n'))\n",
+    "    elif pair1 in co_map_filter:\n",
+    "        val = int(co_map_filter[pair1].strip('\\n'))\n",
+    "    else:\n",
+    "        val = 0\n",
+    "    co_map_list += [val]\n",
+    "co_map_scaled = preprocessing.scale(co_map_list)\n",
+    "co_feature = np.concatenate([np.array([dis_scaled]).T, \n",
+    "                         np.array([co_map_scaled]).T],axis = 1)\n",
+    "print co_feature.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 223,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "320"
+      ]
+     },
+     "execution_count": 223,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "with open('/home/bil/huangtao/project/data/competition/region_data/region_feature_dict_with_profile.pickle','rb') as f:\n",
+    "    region_feature = pickle.load(f)  \n",
+    "len(region_feature)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 46,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/pandas/core/indexes/base.py:1592: UnicodeWarning: Unicode equal comparison failed to convert both arguments to Unicode - interpreting them as being unequal\n",
+      "  return key in self._engine\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style>\n",
+       "    .dataframe thead tr:only-child th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: left;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>丽人_visit</th>\n",
+       "      <th>交通设施_hot</th>\n",
+       "      <th>交通设施_num</th>\n",
+       "      <th>亲子教育_visit</th>\n",
+       "      <th>便利店_num</th>\n",
+       "      <th>健身中心_hot</th>\n",
+       "      <th>其他_hot</th>\n",
+       "      <th>典当行_num</th>\n",
+       "      <th>内部楼栋_hot</th>\n",
+       "      <th>动物园_num</th>\n",
+       "      <th>...</th>\n",
+       "      <th>地铁、轻轨_visit</th>\n",
+       "      <th>省道_num</th>\n",
+       "      <th>省道_hot</th>\n",
+       "      <th>省道_visit</th>\n",
+       "      <th>飞机场_num</th>\n",
+       "      <th>飞机场_hot</th>\n",
+       "      <th>飞机场_visit</th>\n",
+       "      <th>城市次干道_num</th>\n",
+       "      <th>城市次干道_hot</th>\n",
+       "      <th>城市次干道_visit</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>4092.000000</td>\n",
+       "      <td>9183.00000</td>\n",
+       "      <td>563.000000</td>\n",
+       "      <td>7.300000e+01</td>\n",
+       "      <td>45.000000</td>\n",
+       "      <td>989.000000</td>\n",
+       "      <td>14102.000000</td>\n",
+       "      <td>5.000000</td>\n",
+       "      <td>8869.000000</td>\n",
+       "      <td>1.0</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>14301.000000</td>\n",
+       "      <td>55700.00000</td>\n",
+       "      <td>2556.000000</td>\n",
+       "      <td>8.930000e+02</td>\n",
+       "      <td>218.000000</td>\n",
+       "      <td>2216.000000</td>\n",
+       "      <td>61127.000000</td>\n",
+       "      <td>18.000000</td>\n",
+       "      <td>32267.000000</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>804.993729</td>\n",
+       "      <td>661.59137</td>\n",
+       "      <td>216.930733</td>\n",
+       "      <td>2.618645e-57</td>\n",
+       "      <td>4.174034</td>\n",
+       "      <td>331.323006</td>\n",
+       "      <td>4205.153839</td>\n",
+       "      <td>0.825966</td>\n",
+       "      <td>985.030281</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>1268.000000</td>\n",
+       "      <td>27535.00000</td>\n",
+       "      <td>1962.000000</td>\n",
+       "      <td>0.000000e+00</td>\n",
+       "      <td>21.000000</td>\n",
+       "      <td>122.000000</td>\n",
+       "      <td>31633.000000</td>\n",
+       "      <td>0.000000</td>\n",
+       "      <td>838.000000</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>8913.000000</td>\n",
+       "      <td>13616.00000</td>\n",
+       "      <td>736.000000</td>\n",
+       "      <td>6.040000e+02</td>\n",
+       "      <td>114.000000</td>\n",
+       "      <td>1442.000000</td>\n",
+       "      <td>22621.000000</td>\n",
+       "      <td>8.000000</td>\n",
+       "      <td>13761.000000</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>0.0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>5 rows × 583 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "       丽人_visit     交通设施_hot     交通设施_num    亲子教育_visit     便利店_num  \\\n",
+       "0   4092.000000   9183.00000   563.000000  7.300000e+01   45.000000   \n",
+       "1  14301.000000  55700.00000  2556.000000  8.930000e+02  218.000000   \n",
+       "2    804.993729    661.59137   216.930733  2.618645e-57    4.174034   \n",
+       "3   1268.000000  27535.00000  1962.000000  0.000000e+00   21.000000   \n",
+       "4   8913.000000  13616.00000   736.000000  6.040000e+02  114.000000   \n",
+       "\n",
+       "      健身中心_hot        其他_hot    典当行_num      内部楼栋_hot  动物园_num     ...       \\\n",
+       "0   989.000000  14102.000000   5.000000   8869.000000      1.0     ...        \n",
+       "1  2216.000000  61127.000000  18.000000  32267.000000      0.0     ...        \n",
+       "2   331.323006   4205.153839   0.825966    985.030281      0.0     ...        \n",
+       "3   122.000000  31633.000000   0.000000    838.000000      0.0     ...        \n",
+       "4  1442.000000  22621.000000   8.000000  13761.000000      0.0     ...        \n",
+       "\n",
+       "   地铁、轻轨_visit  省道_num  省道_hot  省道_visit  飞机场_num  飞机场_hot  飞机场_visit  \\\n",
+       "0          0.0     0.0     0.0       0.0      0.0      0.0        0.0   \n",
+       "1          0.0     0.0     0.0       0.0      0.0      0.0        0.0   \n",
+       "2          0.0     0.0     0.0       0.0      0.0      0.0        0.0   \n",
+       "3          0.0     0.0     0.0       0.0      0.0      0.0        0.0   \n",
+       "4          0.0     0.0     0.0       0.0      0.0      0.0        0.0   \n",
+       "\n",
+       "   城市次干道_num  城市次干道_hot  城市次干道_visit  \n",
+       "0        0.0        0.0          0.0  \n",
+       "1        0.0        0.0          0.0  \n",
+       "2        0.0        0.0          0.0  \n",
+       "3        0.0        0.0          0.0  \n",
+       "4        0.0        0.0          0.0  \n",
+       "\n",
+       "[5 rows x 583 columns]"
+      ]
+     },
+     "execution_count": 46,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import pickle\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/bid_town_dict.pickle','rb') as f:\n",
+    "    bid_town_dict = pickle.load(f)\n",
+    "import pickle\n",
+    "with open('/home/bil/huangtao/project/data/competition/region_data/region_feature_dict_with_profile.pickle','rb') as f:\n",
+    "    region_feature = pickle.load(f)  \n",
+    "bid1_region = []\n",
+    "for bid in data_cut['bid1']:\n",
+    "    if bid not in bid_town_dict:\n",
+    "        bid1_region +=[dict()]\n",
+    "        continue\n",
+    "    region_ids = bid_town_dict[bid]\n",
+    "    region_id = region_ids[0]\n",
+    "    feature = region_feature[region_id]\n",
+    "    if len(region_ids) != 1:\n",
+    "        region_id = region_ids[1]\n",
+    "        feature1 = region_feature[region_id]\n",
+    "        keys = list(set(feature.keys() + feature1.keys()))\n",
+    "        for key in keys:\n",
+    "            if key in feature and key in feature1:\n",
+    "                feature[key] = (float(feature[key]) + float(feature1[key]))/2.0\n",
+    "            elif key in feature:\n",
+    "                feature[key] = feature[key]/2.0\n",
+    "            elif key in feature1:    \n",
+    "                feature[key] = feature1[key]/2.0\n",
+    "    bid1_region += [feature]\n",
+    "bid2_region = []\n",
+    "for bid in data_cut['bid2']:\n",
+    "    if bid not in bid_town_dict:\n",
+    "        bid2_region +=[dict()]\n",
+    "        continue\n",
+    "    region_ids = bid_town_dict[bid]\n",
+    "    region_id = region_ids[0]\n",
+    "    feature = region_feature[region_id]\n",
+    "    if len(region_ids) != 1:\n",
+    "        region_id = region_ids[1]\n",
+    "        feature1 = region_feature[region_id]\n",
+    "        keys = list(set(feature.keys() + feature1.keys()))\n",
+    "        for key in keys:\n",
+    "            if key in feature and key in feature1:\n",
+    "                feature[key] = (float(feature[key]) + float(feature1[key]))/2.0\n",
+    "            elif key in feature:\n",
+    "                feature[key] = feature[key]/2.0\n",
+    "            elif key in feature1:    \n",
+    "                feature[key] = feature1[key]/2.0\n",
+    "    bid2_region += [feature]\n",
+    "region1 = pd.DataFrame(bid1_region).fillna(0.0)\n",
+    "region2 = pd.DataFrame(bid2_region).fillna(0.0)\n",
+    "region2.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 47,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "region1_scaled = preprocessing.scale(region1)\n",
+    "region2_scaled = preprocessing.scale(region2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 160,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "from sklearn.preprocessing import LabelEncoder\n",
+    "from sklearn.preprocessing import OneHotEncoder\n",
+    "def labels_to_onehot(label):\n",
+    "    enc_label = LabelEncoder()\n",
+    "    enc_label.fit(label)\n",
+    "    encode = enc_label.transform(label)\n",
+    "    encode = np.array([encode]).T\n",
+    "    enc_onehot = OneHotEncoder()\n",
+    "    enc_onehot.fit(encode)\n",
+    "    onehot = enc_onehot.transform(encode)\n",
+    "    return onehot\n",
+    "all_bid = set()\n",
+    "for pair in co_map_filter:\n",
+    "    bid1 = pair.split('#')[0]\n",
+    "    bid2 = pair.split('#')[1]\n",
+    "    all_bid.add(bid1)\n",
+    "    all_bid.add(bid2)\n",
+    "for bid in data_cut['bid1']:\n",
+    "    all_bid.add(bid)\n",
+    "for bid in data_cut['bid2']:\n",
+    "    all_bid.add(bid)   \n",
+    "bid_list = list(all_bid)\n",
+    "tag1_list = []\n",
+    "tag2_list = []\n",
+    "for bid in bid_list:\n",
+    "    tag1 = poi_dict[bid]['std_tag'].split(';')[0]\n",
+    "    tag2 = poi_dict[bid]['std_tag'].split(';')[-1]\n",
+    "    tag1_list += [tag1]\n",
+    "    tag2_list += [tag2]\n",
+    "onehot1 = labels_to_onehot(tag1_list)\n",
+    "onehot2 = labels_to_onehot(tag2_list)\n",
+    "loc1_list = []\n",
+    "loc2_list = []\n",
+    "for bid in bid_list:\n",
+    "    loc1 = poi_dict[bid]['loc'][0]\n",
+    "    loc2 = poi_dict[bid]['loc'][1]\n",
+    "    loc1_list += [loc1]\n",
+    "    loc2_list += [loc2]\n",
+    "loc1_scaled = preprocessing.scale(loc1_list)\n",
+    "loc2_scaled = preprocessing.scale(loc2_list)  "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 161,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "all_bid = set()\n",
+    "for pair in co_map_filter:\n",
+    "    bid1 = pair.split('#')[0]\n",
+    "    bid2 = pair.split('#')[1]\n",
+    "    all_bid.add(bid1)\n",
+    "    all_bid.add(bid2)\n",
+    "for bid in data_cut['bid1']:\n",
+    "    all_bid.add(bid)\n",
+    "for bid in data_cut['bid2']:\n",
+    "    all_bid.add(bid)  \n",
+    "all_bid = list(all_bid)\n",
+    "i = 0\n",
+    "poi_index = {}\n",
+    "for bid in all_bid:\n",
+    "    i+=1\n",
+    "    poi_index[bid] = i"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 162,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "299000 / 299508\r"
+     ]
+    }
+   ],
+   "source": [
+    "poi_embed_dict = {}\n",
+    "flag = 0\n",
+    "for i in range(len(bid_list)):\n",
+    "    flag += 1\n",
+    "    bid = bid_list[i]\n",
+    "    tag1 = onehot1[i]\n",
+    "    tag2 = onehot2[i]\n",
+    "    loc1 = loc1_scaled[i]\n",
+    "    loc2 = loc2_scaled[i]\n",
+    "    poi_embed_dict[bid] = np.array([tag1.toarray()[0].tolist() + tag2.toarray()[0].tolist() + [loc1]+[loc2]])\n",
+    "    if flag % 1000 == 0:print '%d / %d\\r' %(flag, len(bid_list)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 51,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 211) (39262, 211)\n"
+     ]
+    }
+   ],
+   "source": [
+    "bid1_embed = []\n",
+    "for bid in data_cut['bid1']:\n",
+    "    embed = poi_embed_dict[bid][0]\n",
+    "    bid1_embed += [embed]\n",
+    "bid2_embed = []\n",
+    "for bid in data_cut['bid2']:\n",
+    "    embed = poi_embed_dict[bid][0]\n",
+    "    bid2_embed += [embed]\n",
+    "bid1_embed = np.array(bid1_embed)\n",
+    "bid2_embed = np.array(bid2_embed)\n",
+    "print bid1_embed.shape, bid2_embed.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 221,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "3902181"
+      ]
+     },
+     "execution_count": 221,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "len(co_map_filter)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 52,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "label = np.array(data_cut.loc[:,'label'])\n",
+    "all_index = range(len(data))\n",
+    "from sklearn.model_selection import train_test_split\n",
+    "train_index,test_index = train_test_split(all_index,test_size=0.1,random_state=2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 176,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import pickle\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/co_feature.pickle','wb') as f:\n",
+    "    pickle.dump(co_feature,f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/bid1_embed.pickle','wb') as f:\n",
+    "    pickle.dump(bid1_embed,f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/bid2_embed.pickle','wb') as f:\n",
+    "    pickle.dump(bid2_embed,f) \n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/region1_embed.pickle','wb') as f:\n",
+    "    pickle.dump(region1_scaled,f) \n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/region2_embed.pickle','wb') as f:\n",
+    "    pickle.dump(region2_scaled,f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/train_index.pickle','wb') as f:\n",
+    "    pickle.dump(train_index,f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/test_index.pickle','wb') as f:\n",
+    "    pickle.dump(test_index,f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/label.pickle','wb') as f:\n",
+    "    pickle.dump(np.array(data_cut.loc[:,'label']),f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import pickle\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/co_feature.pickle','rb') as f:\n",
+    "    co_feature = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/bid1_embed.pickle','rb') as f:\n",
+    "    bid1_embed = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/bid2_embed.pickle','rb') as f:\n",
+    "    bid2_embed = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/region1_embed.pickle','rb') as f:\n",
+    "    region1 = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/region2_embed.pickle','rb') as f:\n",
+    "    region2 = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 70,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/train_index.pickle','rb') as f:\n",
+    "    train_index = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/test_index.pickle','rb') as f:\n",
+    "    test_index = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/label.pickle','rb') as f:\n",
+    "    label = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 85,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "data_x = np.concatenate([co_feature, bid1_embed, bid2_embed],axis = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 86,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 424)\n"
+     ]
+    }
+   ],
+   "source": [
+    "data_x = np.array(data_x)\n",
+    "print data_x.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 87,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "train_y = label[train_index]\n",
+    "test_y = label[test_index]\n",
+    "train_x = data_x[train_index,:]\n",
+    "test_x = data_x[test_index,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 88,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "逻辑回归模型:\n",
+      "LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,\n",
+      "          intercept_scaling=1, max_iter=100, multi_class='ovr', n_jobs=1,\n",
+      "          penalty='l2', random_state=None, solver='liblinear', tol=0.0001,\n",
+      "          verbose=0, warm_start=False)\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn import metrics\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "model = LogisticRegression()\n",
+    "print '逻辑回归模型:\\n',model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 89,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.7030812324929971\n"
+     ]
+    }
+   ],
+   "source": [
+    "model.fit(train_x,train_y)\n",
+    "score = model.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = model.predict(test_x)\n",
+    "acc = model.score(test_x,test_y)\n",
+    "print acc"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 90,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7030812324929971 auc:  0.777510364367409 f1_score:  0.7207854406130267 \n",
+      "precision:  0.7204404021062709 recall:  0.7211308097747964\n"
+     ]
+    }
+   ],
+   "source": [
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# node2vec+feature"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 91,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/ipykernel_launcher.py:10: DeprecationWarning: Call to deprecated `__getitem__` (Method will be removed in 4.0.0, use self.wv.__getitem__() instead).\n",
+      "  # Remove the CWD from sys.path while we load stuff.\n",
+      "/home/bil/anaconda2/lib/python2.7/site-packages/ipykernel_launcher.py:14: DeprecationWarning: Call to deprecated `__getitem__` (Method will be removed in 4.0.0, use self.wv.__getitem__() instead).\n",
+      "  \n"
+     ]
+    }
+   ],
+   "source": [
+    "t = []\n",
+    "p = []\n",
+    "f = []\n",
+    "for i in range(len(data)):\n",
+    "    val = 0\n",
+    "    bid1 = data.loc[i,'bid1']\n",
+    "    bid2 = data.loc[i,'bid2']\n",
+    "    tag1 = poi_dict[bid1]['std_tag'].split(';')[0]\n",
+    "    try:\n",
+    "        m1 = vector[bid1]\n",
+    "    except:\n",
+    "        m1 = [0.0] * 128\n",
+    "    try:\n",
+    "        m2 = vector[bid2]\n",
+    "    except:\n",
+    "        m2 = [0.0] * 128\n",
+    "    cos = cosine_similarity(m1, m2)\n",
+    "    f += [list(m1) + list(m2)]\n",
+    "    p += [cos]\n",
+    "    t += [data.loc[i,'label']]   "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "data_x = np.concatenate([co_feature, bid1_embed, f],axis = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 99,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(39262, 469)"
+      ]
+     },
+     "execution_count": 99,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "np.array(data_x).shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 100,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "train_y = np.array(t)[train_index]\n",
+    "test_y = np.array(t)[test_index]\n",
+    "train_x = np.array(data_x)[train_index,:]\n",
+    "test_x = np.array(data_x)[test_index,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 101,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "逻辑回归模型:\n",
+      "LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,\n",
+      "          intercept_scaling=1, max_iter=100, multi_class='ovr', n_jobs=1,\n",
+      "          penalty='l2', random_state=None, solver='liblinear', tol=0.0001,\n",
+      "          verbose=0, warm_start=False)\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn import metrics\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "model = LogisticRegression()\n",
+    "print '逻辑回归模型:\\n',model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 102,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.7998472116119175\n"
+     ]
+    }
+   ],
+   "source": [
+    "model.fit(train_x,train_y)\n",
+    "score = model.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = model.predict(test_x)\n",
+    "acc = model.score(test_x,test_y)\n",
+    "print acc"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 103,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7998472116119175 auc:  0.8802449428136914 f1_score:  0.8111484863046613 \n",
+      "precision:  0.8134939759036145 recall:  0.8088164829899377\n"
+     ]
+    }
+   ],
+   "source": [
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 104,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[0]\tvalidation_0-error:0.314489\n",
+      "Will train until validation_0-error hasn't improved in 10 rounds.\n",
+      "[1]\tvalidation_0-error:0.30303\n",
+      "[2]\tvalidation_0-error:0.297937\n",
+      "[3]\tvalidation_0-error:0.286478\n",
+      "[4]\tvalidation_0-error:0.292844\n",
+      "[5]\tvalidation_0-error:0.281385\n",
+      "[6]\tvalidation_0-error:0.279348\n",
+      "[7]\tvalidation_0-error:0.269926\n",
+      "[8]\tvalidation_0-error:0.271963\n",
+      "[9]\tvalidation_0-error:0.273237\n",
+      "[10]\tvalidation_0-error:0.271709\n",
+      "[11]\tvalidation_0-error:0.269926\n",
+      "[12]\tvalidation_0-error:0.263815\n",
+      "[13]\tvalidation_0-error:0.263815\n",
+      "[14]\tvalidation_0-error:0.255921\n",
+      "[15]\tvalidation_0-error:0.2493\n",
+      "[16]\tvalidation_0-error:0.253374\n",
+      "[17]\tvalidation_0-error:0.2493\n",
+      "[18]\tvalidation_0-error:0.248281\n",
+      "[19]\tvalidation_0-error:0.240896\n",
+      "[20]\tvalidation_0-error:0.246244\n",
+      "[21]\tvalidation_0-error:0.239114\n",
+      "[22]\tvalidation_0-error:0.238859\n",
+      "[23]\tvalidation_0-error:0.235039\n",
+      "[24]\tvalidation_0-error:0.232748\n",
+      "[25]\tvalidation_0-error:0.233766\n",
+      "[26]\tvalidation_0-error:0.229692\n",
+      "[27]\tvalidation_0-error:0.231729\n",
+      "[28]\tvalidation_0-error:0.229947\n",
+      "[29]\tvalidation_0-error:0.226891\n",
+      "[30]\tvalidation_0-error:0.226381\n",
+      "[31]\tvalidation_0-error:0.224599\n",
+      "[32]\tvalidation_0-error:0.219506\n",
+      "[33]\tvalidation_0-error:0.220015\n",
+      "[34]\tvalidation_0-error:0.219506\n",
+      "[35]\tvalidation_0-error:0.220015\n",
+      "[36]\tvalidation_0-error:0.220015\n",
+      "[37]\tvalidation_0-error:0.218997\n",
+      "[38]\tvalidation_0-error:0.220525\n",
+      "[39]\tvalidation_0-error:0.21696\n",
+      "[40]\tvalidation_0-error:0.21645\n",
+      "[41]\tvalidation_0-error:0.215941\n",
+      "[42]\tvalidation_0-error:0.216196\n",
+      "[43]\tvalidation_0-error:0.216705\n",
+      "[44]\tvalidation_0-error:0.213394\n",
+      "[45]\tvalidation_0-error:0.213394\n",
+      "[46]\tvalidation_0-error:0.210593\n",
+      "[47]\tvalidation_0-error:0.210084\n",
+      "[48]\tvalidation_0-error:0.211612\n",
+      "[49]\tvalidation_0-error:0.207792\n",
+      "[50]\tvalidation_0-error:0.207538\n",
+      "[51]\tvalidation_0-error:0.209065\n",
+      "[52]\tvalidation_0-error:0.206519\n",
+      "[53]\tvalidation_0-error:0.208047\n",
+      "[54]\tvalidation_0-error:0.206774\n",
+      "[55]\tvalidation_0-error:0.20601\n",
+      "[56]\tvalidation_0-error:0.203718\n",
+      "[57]\tvalidation_0-error:0.204991\n",
+      "[58]\tvalidation_0-error:0.204991\n",
+      "[59]\tvalidation_0-error:0.204991\n",
+      "[60]\tvalidation_0-error:0.204736\n",
+      "[61]\tvalidation_0-error:0.203718\n",
+      "[62]\tvalidation_0-error:0.201935\n",
+      "[63]\tvalidation_0-error:0.200662\n",
+      "[64]\tvalidation_0-error:0.199898\n",
+      "[65]\tvalidation_0-error:0.197352\n",
+      "[66]\tvalidation_0-error:0.197097\n",
+      "[67]\tvalidation_0-error:0.197861\n",
+      "[68]\tvalidation_0-error:0.196842\n",
+      "[69]\tvalidation_0-error:0.196078\n",
+      "[70]\tvalidation_0-error:0.195569\n",
+      "[71]\tvalidation_0-error:0.19506\n",
+      "[72]\tvalidation_0-error:0.194296\n",
+      "[73]\tvalidation_0-error:0.193277\n",
+      "[74]\tvalidation_0-error:0.192513\n",
+      "[75]\tvalidation_0-error:0.194551\n",
+      "[76]\tvalidation_0-error:0.192768\n",
+      "[77]\tvalidation_0-error:0.193023\n",
+      "[78]\tvalidation_0-error:0.193532\n",
+      "[79]\tvalidation_0-error:0.192513\n",
+      "[80]\tvalidation_0-error:0.191749\n",
+      "[81]\tvalidation_0-error:0.192259\n",
+      "[82]\tvalidation_0-error:0.194296\n",
+      "[83]\tvalidation_0-error:0.193023\n",
+      "[84]\tvalidation_0-error:0.192513\n",
+      "[85]\tvalidation_0-error:0.192259\n",
+      "[86]\tvalidation_0-error:0.193277\n",
+      "[87]\tvalidation_0-error:0.192259\n",
+      "[88]\tvalidation_0-error:0.190476\n",
+      "[89]\tvalidation_0-error:0.193277\n",
+      "[90]\tvalidation_0-error:0.191749\n",
+      "[91]\tvalidation_0-error:0.192513\n",
+      "[92]\tvalidation_0-error:0.192259\n",
+      "[93]\tvalidation_0-error:0.191749\n",
+      "[94]\tvalidation_0-error:0.190476\n",
+      "[95]\tvalidation_0-error:0.190731\n",
+      "[96]\tvalidation_0-error:0.190731\n",
+      "[97]\tvalidation_0-error:0.190731\n",
+      "[98]\tvalidation_0-error:0.189458\n",
+      "[99]\tvalidation_0-error:0.189967\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,\n",
+       "       colsample_bytree=1, gamma=0, learning_rate=0.1, max_delta_step=0,\n",
+       "       max_depth=2, min_child_weight=1, missing=None, n_estimators=100,\n",
+       "       n_jobs=1, nthread=None, objective='binary:logistic', random_state=0,\n",
+       "       reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,\n",
+       "       silent=True, subsample=1)"
+      ]
+     },
+     "execution_count": 104,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import xgboost as xgb\n",
+    "xgbmodel = xgb.XGBClassifier(n_estimators=100, \n",
+    "                             silent=True, \n",
+    "                             objective='binary:logistic',\n",
+    "                             max_depth=2, \n",
+    "                             learning_rate=0.1)\n",
+    "xgbmodel.fit(train_x,train_y,early_stopping_rounds=10,eval_set=[(test_x,test_y)],eval_metric=\"error\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 108,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.8105423987776929 auc:  0.892174251578092 f1_score:  0.8205499276411 \n",
+      "precision:  0.8261291889266634 recall:  0.8150455198850024\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/sklearn/preprocessing/label.py:171: DeprecationWarning: The truth value of an empty array is ambiguous. Returning False, but in future this will result in an error. Use `array.size > 0` to check that an array is not empty.\n",
+      "  if diff:\n"
+     ]
+    }
+   ],
+   "source": [
+    "score = xgbmodel.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = xgbmodel.predict(test_x)\n",
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# XGBOOST"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 198,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "data_x = np.concatenate([co_feature, bid1_embed, bid2_embed, region1,region2],axis = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 199,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "(39262, 1590)"
+      ]
+     },
+     "execution_count": 199,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "np.array(data_x).shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 200,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "train_y = label[train_index]\n",
+    "test_y = label[test_index]\n",
+    "train_x = np.array(data_x)[train_index,:]\n",
+    "test_x = np.array(data_x)[test_index,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 201,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(35335,)\n",
+      "(35335, 1590)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print train_y.shape\n",
+    "print train_x.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 202,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "import xgboost as xgb\n",
+    "xgbmodel = xgb.XGBClassifier(n_estimators=100, \n",
+    "                             silent=True, \n",
+    "                             objective='binary:logistic',\n",
+    "                             max_depth=2, \n",
+    "                             learning_rate=0.1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 203,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[0]\tvalidation_0-error:0.307614\n",
+      "Will train until validation_0-error hasn't improved in 10 rounds.\n",
+      "[1]\tvalidation_0-error:0.307614\n",
+      "[2]\tvalidation_0-error:0.307614\n",
+      "[3]\tvalidation_0-error:0.307614\n",
+      "[4]\tvalidation_0-error:0.307614\n",
+      "[5]\tvalidation_0-error:0.297173\n",
+      "[6]\tvalidation_0-error:0.297173\n",
+      "[7]\tvalidation_0-error:0.297937\n",
+      "[8]\tvalidation_0-error:0.294118\n",
+      "[9]\tvalidation_0-error:0.295391\n",
+      "[10]\tvalidation_0-error:0.295391\n",
+      "[11]\tvalidation_0-error:0.294118\n",
+      "[12]\tvalidation_0-error:0.294372\n",
+      "[13]\tvalidation_0-error:0.289279\n",
+      "[14]\tvalidation_0-error:0.290043\n",
+      "[15]\tvalidation_0-error:0.285205\n",
+      "[16]\tvalidation_0-error:0.284696\n",
+      "[17]\tvalidation_0-error:0.284186\n",
+      "[18]\tvalidation_0-error:0.282149\n",
+      "[19]\tvalidation_0-error:0.280367\n",
+      "[20]\tvalidation_0-error:0.277311\n",
+      "[21]\tvalidation_0-error:0.275274\n",
+      "[22]\tvalidation_0-error:0.272218\n",
+      "[23]\tvalidation_0-error:0.271199\n",
+      "[24]\tvalidation_0-error:0.272982\n",
+      "[25]\tvalidation_0-error:0.271454\n",
+      "[26]\tvalidation_0-error:0.270945\n",
+      "[27]\tvalidation_0-error:0.26738\n",
+      "[28]\tvalidation_0-error:0.269162\n",
+      "[29]\tvalidation_0-error:0.266616\n",
+      "[30]\tvalidation_0-error:0.264579\n",
+      "[31]\tvalidation_0-error:0.265343\n",
+      "[32]\tvalidation_0-error:0.266361\n",
+      "[33]\tvalidation_0-error:0.264579\n",
+      "[34]\tvalidation_0-error:0.265088\n",
+      "[35]\tvalidation_0-error:0.266106\n",
+      "[36]\tvalidation_0-error:0.264833\n",
+      "[37]\tvalidation_0-error:0.264324\n",
+      "[38]\tvalidation_0-error:0.264324\n",
+      "[39]\tvalidation_0-error:0.263815\n",
+      "[40]\tvalidation_0-error:0.264324\n",
+      "[41]\tvalidation_0-error:0.264579\n",
+      "[42]\tvalidation_0-error:0.262032\n",
+      "[43]\tvalidation_0-error:0.261523\n",
+      "[44]\tvalidation_0-error:0.261268\n",
+      "[45]\tvalidation_0-error:0.260759\n",
+      "[46]\tvalidation_0-error:0.260759\n",
+      "[47]\tvalidation_0-error:0.26025\n",
+      "[48]\tvalidation_0-error:0.25974\n",
+      "[49]\tvalidation_0-error:0.259231\n",
+      "[50]\tvalidation_0-error:0.258467\n",
+      "[51]\tvalidation_0-error:0.257703\n",
+      "[52]\tvalidation_0-error:0.256684\n",
+      "[53]\tvalidation_0-error:0.25643\n",
+      "[54]\tvalidation_0-error:0.25643\n",
+      "[55]\tvalidation_0-error:0.256175\n",
+      "[56]\tvalidation_0-error:0.255411\n",
+      "[57]\tvalidation_0-error:0.254902\n",
+      "[58]\tvalidation_0-error:0.254902\n",
+      "[59]\tvalidation_0-error:0.254902\n",
+      "[60]\tvalidation_0-error:0.254647\n",
+      "[61]\tvalidation_0-error:0.253629\n",
+      "[62]\tvalidation_0-error:0.254138\n",
+      "[63]\tvalidation_0-error:0.253119\n",
+      "[64]\tvalidation_0-error:0.253374\n",
+      "[65]\tvalidation_0-error:0.252865\n",
+      "[66]\tvalidation_0-error:0.25261\n",
+      "[67]\tvalidation_0-error:0.253883\n",
+      "[68]\tvalidation_0-error:0.253883\n",
+      "[69]\tvalidation_0-error:0.254393\n",
+      "[70]\tvalidation_0-error:0.253629\n",
+      "[71]\tvalidation_0-error:0.252101\n",
+      "[72]\tvalidation_0-error:0.25261\n",
+      "[73]\tvalidation_0-error:0.25261\n",
+      "[74]\tvalidation_0-error:0.252865\n",
+      "[75]\tvalidation_0-error:0.250573\n",
+      "[76]\tvalidation_0-error:0.251082\n",
+      "[77]\tvalidation_0-error:0.250573\n",
+      "[78]\tvalidation_0-error:0.250064\n",
+      "[79]\tvalidation_0-error:0.250573\n",
+      "[80]\tvalidation_0-error:0.250318\n",
+      "[81]\tvalidation_0-error:0.250318\n",
+      "[82]\tvalidation_0-error:0.249809\n",
+      "[83]\tvalidation_0-error:0.250318\n",
+      "[84]\tvalidation_0-error:0.2493\n",
+      "[85]\tvalidation_0-error:0.249554\n",
+      "[86]\tvalidation_0-error:0.248536\n",
+      "[87]\tvalidation_0-error:0.249554\n",
+      "[88]\tvalidation_0-error:0.249045\n",
+      "[89]\tvalidation_0-error:0.248281\n",
+      "[90]\tvalidation_0-error:0.247517\n",
+      "[91]\tvalidation_0-error:0.245735\n",
+      "[92]\tvalidation_0-error:0.246244\n",
+      "[93]\tvalidation_0-error:0.246753\n",
+      "[94]\tvalidation_0-error:0.247772\n",
+      "[95]\tvalidation_0-error:0.248026\n",
+      "[96]\tvalidation_0-error:0.247008\n",
+      "[97]\tvalidation_0-error:0.247263\n",
+      "[98]\tvalidation_0-error:0.246753\n",
+      "[99]\tvalidation_0-error:0.246499\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,\n",
+       "       colsample_bytree=1, gamma=0, learning_rate=0.1, max_delta_step=0,\n",
+       "       max_depth=2, min_child_weight=1, missing=None, n_estimators=100,\n",
+       "       n_jobs=1, nthread=None, objective='binary:logistic', random_state=0,\n",
+       "       reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,\n",
+       "       silent=True, subsample=1)"
+      ]
+     },
+     "execution_count": 203,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "xgbmodel.fit(train_x,train_y,early_stopping_rounds=10,eval_set=[(test_x,test_y)],eval_metric=\"error\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 204,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7542653425006366 auc:  0.8289542144955313 f1_score:  0.7568657092466616 \n",
+      "precision:  0.798087141339001 recall:  0.7196933397220892\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/sklearn/preprocessing/label.py:171: DeprecationWarning: The truth value of an empty array is ambiguous. Returning False, but in future this will result in an error. Use `array.size > 0` to check that an array is not empty.\n",
+      "  if diff:\n"
+     ]
+    }
+   ],
+   "source": [
+    "score = xgbmodel.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = xgbmodel.predict(test_x)\n",
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# motif"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 116,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "load motif1..\n",
+      "load motif2..\n",
+      "load motif3..\n",
+      "load motif4..\n"
+     ]
+    }
+   ],
+   "source": [
+    "print 'load motif1..'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif1_dict.pickle', 'rb') as f:\n",
+    "    motif1_dict = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif1_negtive_dict.pickle', 'rb') as f:\n",
+    "    motif1_negtive_dict = pickle.load(f)\n",
+    "print 'load motif2..'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif2_dict.pickle', 'rb') as f:\n",
+    "    motif2_dict = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif2_negtive_dict.pickle', 'rb') as f:\n",
+    "    motif2_negtive_dict = pickle.load(f)\n",
+    "print 'load motif3..'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif3_dict.pickle', 'rb') as f:\n",
+    "    motif3_dict = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif3_negtive_dict.pickle', 'rb') as f:\n",
+    "    motif3_negtive_dict = pickle.load(f)\n",
+    "print 'load motif4..'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif4_dict.pickle', 'rb') as f:\n",
+    "    motif4_dict = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/motif4_negtive_dict.pickle', 'rb') as f:\n",
+    "    motif4_negtive_dict = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 117,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.145349979401\n",
+      "21330\n",
+      "0.088681936264\n",
+      "17932\n"
+     ]
+    }
+   ],
+   "source": [
+    "import time\n",
+    "import pickle\n",
+    "st = time.time()\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/share_visit.pickle') as f:\n",
+    "    share_visit=pickle.load(f)\n",
+    "print time.time() - st\n",
+    "print len(share_visit)\n",
+    "import time\n",
+    "st = time.time()\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/negtive.pickle') as f:\n",
+    "    negtive=pickle.load(f)\n",
+    "print time.time() - st\n",
+    "print len(negtive)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 118,
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'poi_embed_dict' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m\u001b[0m",
+      "\u001b[0;31mNameError\u001b[0mTraceback (most recent call last)",
+      "\u001b[0;32m<ipython-input-118-e05d87fe0283>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m()\u001b[0m\n\u001b[1;32m     11\u001b[0m     \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     12\u001b[0m         \u001b[0mval\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mmotif1_negtive_dict\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mpair\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;31m#[poi*3,pre,co_sq, dis_sq]*5\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 13\u001b[0;31m     \u001b[0membed1\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mpoi_embed_dict\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mbid1\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     14\u001b[0m     \u001b[0membed2\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mpoi_embed_dict\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0mbid2\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m[\u001b[0m\u001b[0;36m0\u001b[0m\u001b[0;34m]\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     15\u001b[0m     \u001b[0mline\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mval\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
+      "\u001b[0;31mNameError\u001b[0m: name 'poi_embed_dict' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "#------------motif1---------------\n",
+    "motif1_feature = []#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "flag = 0\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    if pair in motif1_dict:\n",
+    "        val = motif1_dict[pair]\n",
+    "    else:\n",
+    "        val = motif1_negtive_dict[pair]#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "    embed1 = poi_embed_dict[bid1][0]\n",
+    "    embed2 = poi_embed_dict[bid2][0]\n",
+    "    line = val\n",
+    "    motif1_feature += [line]\n",
+    "    if flag % 100 == 0:print '%d / %d\\r' %(flag, len(data_cut)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#------------motif2---------------\n",
+    "motif2_feature = []#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "flag = 0\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    if pair in motif2_dict:\n",
+    "        val = motif2_dict[pair]\n",
+    "    else:\n",
+    "        val = motif2_negtive_dict[pair]#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "    line = val\n",
+    "    motif2_feature += [line]\n",
+    "    if flag % 100 == 0:print '%d / %d\\r' %(flag, len(data_cut)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#------------motif3---------------\n",
+    "motif3_feature = []#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "flag = 0\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    if pair in motif3_dict:\n",
+    "        val = motif3_dict[pair]\n",
+    "    else:\n",
+    "        val = motif3_negtive_dict[pair]#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "    line = val\n",
+    "    motif3_feature += [line]\n",
+    "    if flag % 100 == 0:print '%d / %d\\r' %(flag, len(data_cut)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#------------motif4---------------\n",
+    "motif4_feature = []#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "flag = 0\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    if pair in motif4_dict:\n",
+    "        val = motif4_dict[pair]\n",
+    "    else:\n",
+    "        val = motif4_negtive_dict[pair]#[poi*3,pre,co_sq, dis_sq]*5\n",
+    "    line = val\n",
+    "    motif4_feature += [line]\n",
+    "    if flag % 100 == 0:print '%d / %d\\r' %(flag, len(data_cut)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "poi_embed_dict_filter = {}\n",
+    "print 'add 1...'\n",
+    "for val in motif1_feature:\n",
+    "    for v in val:\n",
+    "        motif = v[0]\n",
+    "        if motif == []:continue\n",
+    "        poi_embed_dict_filter[motif[0]] = poi_embed_dict[motif[0]][0]\n",
+    "        poi_embed_dict_filter[motif[1]] = poi_embed_dict[motif[1]][0]\n",
+    "        poi_embed_dict_filter[motif[2]] = poi_embed_dict[motif[2]][0]\n",
+    "print 'add 2...'\n",
+    "for val in motif2_feature:\n",
+    "    for v in val:\n",
+    "        motif = v[0]\n",
+    "        if motif == []:continue\n",
+    "        poi_embed_dict_filter[motif[0]] = poi_embed_dict[motif[0]][0]\n",
+    "        poi_embed_dict_filter[motif[1]] = poi_embed_dict[motif[1]][0]\n",
+    "        poi_embed_dict_filter[motif[2]] = poi_embed_dict[motif[2]][0]\n",
+    "print 'add 3...'\n",
+    "for val in motif3_feature:\n",
+    "    for v in val:\n",
+    "        motif = v[0]\n",
+    "        if motif == []:continue\n",
+    "        poi_embed_dict_filter[motif[0]] = poi_embed_dict[motif[0]][0]\n",
+    "        poi_embed_dict_filter[motif[1]] = poi_embed_dict[motif[1]][0]\n",
+    "        poi_embed_dict_filter[motif[2]] = poi_embed_dict[motif[2]][0]\n",
+    "print 'add 4...'\n",
+    "for val in motif4_feature:\n",
+    "    for v in val:\n",
+    "        motif = v[0]\n",
+    "        if motif == []:continue\n",
+    "        poi_embed_dict_filter[motif[0]] = poi_embed_dict[motif[0]][0]\n",
+    "        poi_embed_dict_filter[motif[1]] = poi_embed_dict[motif[1]][0]\n",
+    "        poi_embed_dict_filter[motif[2]] = poi_embed_dict[motif[2]][0]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 131,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "save...\n",
+      "save...\n",
+      "save...\n",
+      "save...\n",
+      "save...\n"
+     ]
+    }
+   ],
+   "source": [
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/poi_embed_dict.pickle','wb') as f:\n",
+    "    pickle.dump(poi_embed_dict_filter, f)\n",
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif1_feature.pickle','wb') as f:\n",
+    "    pickle.dump(motif1_feature,f)\n",
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif2_feature.pickle','wb') as f:\n",
+    "    pickle.dump(motif2_feature,f)\n",
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif3_feature.pickle','wb') as f:\n",
+    "    pickle.dump(motif3_feature,f)\n",
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif4_feature.pickle','wb') as f:\n",
+    "    pickle.dump(motif4_feature,f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 120,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "save...\n",
+      "save...\n",
+      "save...\n",
+      "save...\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif1_feature.pickle','rb') as f:\n",
+    "    motif1_feature = pickle.load(f)\n",
+    "\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif2_feature.pickle','rb') as f:\n",
+    "    motif2_feature = pickle.load(f)\n",
+    "\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif3_feature.pickle','rb') as f:\n",
+    "    motif3_feature = pickle.load(f)\n",
+    "\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/motif4_feature.pickle','rb') as f:\n",
+    "    motif4_feature = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 142,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/poi_embed_dict.pickle','rb') as f:\n",
+    "     poi_embed_dict = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 174,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def build_motif_feature(motif_feature):\n",
+    "    res = []\n",
+    "    flag = 0\n",
+    "    for val in motif_feature:\n",
+    "        #val:[[],[],[],[]]*5\n",
+    "        flag += 1\n",
+    "        pre = val[0][1]\n",
+    "        if val[0][0] != []:\n",
+    "            pre += val[0][2] + val[0][3]\n",
+    "        else:\n",
+    "            pre += [0]*6\n",
+    "        line = np.array(pre)\n",
+    "        res += [line]\n",
+    "        if flag == 1:print 'motif_feature: ',line.shape\n",
+    "        if flag % 100 == 0:print '%d / %d\\r' %(flag, len(motif_feature)),\n",
+    "    r = np.array(res)\n",
+    "    return r"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 175,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "motif_feature:  (106,)\n",
+      "motif_feature:  (106,)\n",
+      "motif_feature:  (106,)\n",
+      "motif_feature:  (106,)\n",
+      "39200 / 39262\r"
+     ]
+    }
+   ],
+   "source": [
+    "m1 = build_motif_feature(motif1_feature)\n",
+    "m2 = build_motif_feature(motif2_feature)\n",
+    "m3 = build_motif_feature(motif3_feature)\n",
+    "m4 = build_motif_feature(motif4_feature)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 176,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "((39262, 2), (39262, 211), (39262, 211), (39262, 583), (39262, 106))"
+      ]
+     },
+     "execution_count": 176,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "co_feature.shape, bid1_embed.shape, bid2_embed.shape, region1.shape, m1.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 185,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "data_x = np.concatenate([co_feature,bid1_embed,bid2_embed,m3],axis = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 186,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 530)\n"
+     ]
+    }
+   ],
+   "source": [
+    "data_x = np.array(data_x)\n",
+    "print data_x.shape\n",
+    "train_y = label[train_index]\n",
+    "test_y = label[test_index]\n",
+    "train_x = data_x[train_index,:]\n",
+    "test_x = data_x[test_index,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 187,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[0]\tvalidation_0-error:0.307614\n",
+      "Will train until validation_0-error hasn't improved in 10 rounds.\n",
+      "[1]\tvalidation_0-error:0.307614\n",
+      "[2]\tvalidation_0-error:0.307614\n",
+      "[3]\tvalidation_0-error:0.307614\n",
+      "[4]\tvalidation_0-error:0.307614\n",
+      "[5]\tvalidation_0-error:0.307614\n",
+      "[6]\tvalidation_0-error:0.299465\n",
+      "[7]\tvalidation_0-error:0.298956\n",
+      "[8]\tvalidation_0-error:0.294627\n",
+      "[9]\tvalidation_0-error:0.299465\n",
+      "[10]\tvalidation_0-error:0.29259\n",
+      "[11]\tvalidation_0-error:0.289534\n",
+      "[12]\tvalidation_0-error:0.289534\n",
+      "[13]\tvalidation_0-error:0.289534\n",
+      "[14]\tvalidation_0-error:0.289279\n",
+      "[15]\tvalidation_0-error:0.282404\n",
+      "[16]\tvalidation_0-error:0.283168\n",
+      "[17]\tvalidation_0-error:0.274255\n",
+      "[18]\tvalidation_0-error:0.267889\n",
+      "[19]\tvalidation_0-error:0.268398\n",
+      "[20]\tvalidation_0-error:0.270181\n",
+      "[21]\tvalidation_0-error:0.266361\n",
+      "[22]\tvalidation_0-error:0.265597\n",
+      "[23]\tvalidation_0-error:0.266616\n",
+      "[24]\tvalidation_0-error:0.268908\n",
+      "[25]\tvalidation_0-error:0.265597\n",
+      "[26]\tvalidation_0-error:0.26687\n",
+      "[27]\tvalidation_0-error:0.263305\n",
+      "[28]\tvalidation_0-error:0.258467\n",
+      "[29]\tvalidation_0-error:0.265343\n",
+      "[30]\tvalidation_0-error:0.256939\n",
+      "[31]\tvalidation_0-error:0.25261\n",
+      "[32]\tvalidation_0-error:0.251082\n",
+      "[33]\tvalidation_0-error:0.251082\n",
+      "[34]\tvalidation_0-error:0.251592\n",
+      "[35]\tvalidation_0-error:0.248536\n",
+      "[36]\tvalidation_0-error:0.247772\n",
+      "[37]\tvalidation_0-error:0.248536\n",
+      "[38]\tvalidation_0-error:0.247517\n",
+      "[39]\tvalidation_0-error:0.246244\n",
+      "[40]\tvalidation_0-error:0.248281\n",
+      "[41]\tvalidation_0-error:0.247263\n",
+      "[42]\tvalidation_0-error:0.241406\n",
+      "[43]\tvalidation_0-error:0.24166\n",
+      "[44]\tvalidation_0-error:0.241915\n",
+      "[45]\tvalidation_0-error:0.238859\n",
+      "[46]\tvalidation_0-error:0.233512\n",
+      "[47]\tvalidation_0-error:0.236313\n",
+      "[48]\tvalidation_0-error:0.233512\n",
+      "[49]\tvalidation_0-error:0.235294\n",
+      "[50]\tvalidation_0-error:0.231984\n",
+      "[51]\tvalidation_0-error:0.232748\n",
+      "[52]\tvalidation_0-error:0.233512\n",
+      "[53]\tvalidation_0-error:0.231984\n",
+      "[54]\tvalidation_0-error:0.231474\n",
+      "[55]\tvalidation_0-error:0.231984\n",
+      "[56]\tvalidation_0-error:0.232748\n",
+      "[57]\tvalidation_0-error:0.231729\n",
+      "[58]\tvalidation_0-error:0.232748\n",
+      "[59]\tvalidation_0-error:0.230965\n",
+      "[60]\tvalidation_0-error:0.23071\n",
+      "[61]\tvalidation_0-error:0.228164\n",
+      "[62]\tvalidation_0-error:0.228673\n",
+      "[63]\tvalidation_0-error:0.227655\n",
+      "[64]\tvalidation_0-error:0.226636\n",
+      "[65]\tvalidation_0-error:0.226636\n",
+      "[66]\tvalidation_0-error:0.225872\n",
+      "[67]\tvalidation_0-error:0.226891\n",
+      "[68]\tvalidation_0-error:0.224344\n",
+      "[69]\tvalidation_0-error:0.226636\n",
+      "[70]\tvalidation_0-error:0.22409\n",
+      "[71]\tvalidation_0-error:0.226891\n",
+      "[72]\tvalidation_0-error:0.226381\n",
+      "[73]\tvalidation_0-error:0.225108\n",
+      "[74]\tvalidation_0-error:0.225872\n",
+      "[75]\tvalidation_0-error:0.225618\n",
+      "[76]\tvalidation_0-error:0.224344\n",
+      "[77]\tvalidation_0-error:0.224344\n",
+      "[78]\tvalidation_0-error:0.223326\n",
+      "[79]\tvalidation_0-error:0.223326\n",
+      "[80]\tvalidation_0-error:0.222562\n",
+      "[81]\tvalidation_0-error:0.219506\n",
+      "[82]\tvalidation_0-error:0.219506\n",
+      "[83]\tvalidation_0-error:0.223071\n",
+      "[84]\tvalidation_0-error:0.222307\n",
+      "[85]\tvalidation_0-error:0.221543\n",
+      "[86]\tvalidation_0-error:0.223326\n",
+      "[87]\tvalidation_0-error:0.222052\n",
+      "[88]\tvalidation_0-error:0.218233\n",
+      "[89]\tvalidation_0-error:0.218233\n",
+      "[90]\tvalidation_0-error:0.218997\n",
+      "[91]\tvalidation_0-error:0.218487\n",
+      "[92]\tvalidation_0-error:0.218487\n",
+      "[93]\tvalidation_0-error:0.218233\n",
+      "[94]\tvalidation_0-error:0.217214\n",
+      "[95]\tvalidation_0-error:0.217978\n",
+      "[96]\tvalidation_0-error:0.217723\n",
+      "[97]\tvalidation_0-error:0.215177\n",
+      "[98]\tvalidation_0-error:0.215177\n",
+      "[99]\tvalidation_0-error:0.216705\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,\n",
+       "       colsample_bytree=1, gamma=0, learning_rate=0.1, max_delta_step=0,\n",
+       "       max_depth=2, min_child_weight=1, missing=None, n_estimators=100,\n",
+       "       n_jobs=1, nthread=None, objective='binary:logistic', random_state=0,\n",
+       "       reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,\n",
+       "       silent=True, subsample=1)"
+      ]
+     },
+     "execution_count": 187,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "xgbmodel.fit(train_x,train_y,early_stopping_rounds=10,eval_set=[(test_x,test_y)],eval_metric=\"error\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 188,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7848230201171378 auc:  0.8622023499510426 f1_score:  0.7983774755428298 \n",
+      "precision:  0.7951520912547528 recall:  0.8016291327264016\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/sklearn/preprocessing/label.py:171: DeprecationWarning: The truth value of an empty array is ambiguous. Returning False, but in future this will result in an error. Use `array.size > 0` to check that an array is not empty.\n",
+      "  if diff:\n"
+     ]
+    }
+   ],
+   "source": [
+    "score = xgbmodel.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = xgbmodel.predict(test_x)\n",
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "collapsed": true
+   },
+   "source": [
+    "# pra"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 129,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "with open('/home/bil/huangtao/project/data/competition/data_new/pra_dict.pickle', 'rb') as f:\n",
+    "    pra_dict = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/pra_negtive_dict.pickle', 'rb') as f:\n",
+    "    pra_negtive_dict = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 130,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "39200 / 39262\r"
+     ]
+    }
+   ],
+   "source": [
+    "#------------motif1---------------\n",
+    "pra_feature = []\n",
+    "flag = 0\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    if pair in pra_dict:\n",
+    "        val = pra_dict[pair]\n",
+    "    else:\n",
+    "        val = pra_negtive_dict[pair]\n",
+    "    pra_feature += [val]\n",
+    "    if flag % 100 == 0:print '%d / %d\\r' %(flag, len(data_cut)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 216,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "data_x = np.concatenate([ pra_feature],axis = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 217,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 100)\n"
+     ]
+    }
+   ],
+   "source": [
+    "data_x = np.array(data_x)\n",
+    "print data_x.shape\n",
+    "train_y = label[train_index]\n",
+    "test_y = label[test_index]\n",
+    "train_x = data_x[train_index,:]\n",
+    "test_x = data_x[test_index,:]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 218,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "逻辑回归模型:\n",
+      "LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True,\n",
+      "          intercept_scaling=1, max_iter=100, multi_class='ovr', n_jobs=1,\n",
+      "          penalty='l2', random_state=None, solver='liblinear', tol=0.0001,\n",
+      "          verbose=0, warm_start=False)\n"
+     ]
+    }
+   ],
+   "source": [
+    "from sklearn import metrics\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "model = LogisticRegression()\n",
+    "print '逻辑回归模型:\\n',model"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 219,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7048637636872931 auc:  0.7702899418762109 f1_score:  0.6949197157146618 \n",
+      "precision:  0.7710280373831776 recall:  0.6324868231911835\n"
+     ]
+    }
+   ],
+   "source": [
+    "model.fit(train_x,train_y)\n",
+    "score = model.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = model.predict(test_x)\n",
+    "acc = model.score(test_x,test_y)\n",
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 208,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[0]\tvalidation_0-error:0.32111\n",
+      "Will train until validation_0-error hasn't improved in 10 rounds.\n",
+      "[1]\tvalidation_0-error:0.307614\n",
+      "[2]\tvalidation_0-error:0.321365\n",
+      "[3]\tvalidation_0-error:0.305067\n",
+      "[4]\tvalidation_0-error:0.314489\n",
+      "[5]\tvalidation_0-error:0.298956\n",
+      "[6]\tvalidation_0-error:0.300993\n",
+      "[7]\tvalidation_0-error:0.299211\n",
+      "[8]\tvalidation_0-error:0.298701\n",
+      "[9]\tvalidation_0-error:0.298192\n",
+      "[10]\tvalidation_0-error:0.291571\n",
+      "[11]\tvalidation_0-error:0.291317\n",
+      "[12]\tvalidation_0-error:0.29208\n",
+      "[13]\tvalidation_0-error:0.289789\n",
+      "[14]\tvalidation_0-error:0.280112\n",
+      "[15]\tvalidation_0-error:0.277311\n",
+      "[16]\tvalidation_0-error:0.280112\n",
+      "[17]\tvalidation_0-error:0.269417\n",
+      "[18]\tvalidation_0-error:0.268144\n",
+      "[19]\tvalidation_0-error:0.268398\n",
+      "[20]\tvalidation_0-error:0.263051\n",
+      "[21]\tvalidation_0-error:0.257703\n",
+      "[22]\tvalidation_0-error:0.256175\n",
+      "[23]\tvalidation_0-error:0.255157\n",
+      "[24]\tvalidation_0-error:0.253374\n",
+      "[25]\tvalidation_0-error:0.252101\n",
+      "[26]\tvalidation_0-error:0.251337\n",
+      "[27]\tvalidation_0-error:0.248026\n",
+      "[28]\tvalidation_0-error:0.246499\n",
+      "[29]\tvalidation_0-error:0.243952\n",
+      "[30]\tvalidation_0-error:0.241915\n",
+      "[31]\tvalidation_0-error:0.247263\n",
+      "[32]\tvalidation_0-error:0.242679\n",
+      "[33]\tvalidation_0-error:0.240896\n",
+      "[34]\tvalidation_0-error:0.240642\n",
+      "[35]\tvalidation_0-error:0.236313\n",
+      "[36]\tvalidation_0-error:0.235039\n",
+      "[37]\tvalidation_0-error:0.237841\n",
+      "[38]\tvalidation_0-error:0.234785\n",
+      "[39]\tvalidation_0-error:0.23835\n",
+      "[40]\tvalidation_0-error:0.236058\n",
+      "[41]\tvalidation_0-error:0.235294\n",
+      "[42]\tvalidation_0-error:0.236822\n",
+      "[43]\tvalidation_0-error:0.235803\n",
+      "[44]\tvalidation_0-error:0.233766\n",
+      "[45]\tvalidation_0-error:0.233257\n",
+      "[46]\tvalidation_0-error:0.232238\n",
+      "[47]\tvalidation_0-error:0.231474\n",
+      "[48]\tvalidation_0-error:0.229183\n",
+      "[49]\tvalidation_0-error:0.23122\n",
+      "[50]\tvalidation_0-error:0.23071\n",
+      "[51]\tvalidation_0-error:0.23071\n",
+      "[52]\tvalidation_0-error:0.228673\n",
+      "[53]\tvalidation_0-error:0.229692\n",
+      "[54]\tvalidation_0-error:0.229947\n",
+      "[55]\tvalidation_0-error:0.228673\n",
+      "[56]\tvalidation_0-error:0.227145\n",
+      "[57]\tvalidation_0-error:0.226636\n",
+      "[58]\tvalidation_0-error:0.227145\n",
+      "[59]\tvalidation_0-error:0.226381\n",
+      "[60]\tvalidation_0-error:0.224599\n",
+      "[61]\tvalidation_0-error:0.22358\n",
+      "[62]\tvalidation_0-error:0.223835\n",
+      "[63]\tvalidation_0-error:0.224344\n",
+      "[64]\tvalidation_0-error:0.225108\n",
+      "[65]\tvalidation_0-error:0.22409\n",
+      "[66]\tvalidation_0-error:0.225363\n",
+      "[67]\tvalidation_0-error:0.22358\n",
+      "[68]\tvalidation_0-error:0.223326\n",
+      "[69]\tvalidation_0-error:0.223326\n",
+      "[70]\tvalidation_0-error:0.22358\n",
+      "[71]\tvalidation_0-error:0.222052\n",
+      "[72]\tvalidation_0-error:0.221798\n",
+      "[73]\tvalidation_0-error:0.220779\n",
+      "[74]\tvalidation_0-error:0.220525\n",
+      "[75]\tvalidation_0-error:0.220525\n",
+      "[76]\tvalidation_0-error:0.221798\n",
+      "[77]\tvalidation_0-error:0.222816\n",
+      "[78]\tvalidation_0-error:0.221543\n",
+      "[79]\tvalidation_0-error:0.221798\n",
+      "[80]\tvalidation_0-error:0.220779\n",
+      "[81]\tvalidation_0-error:0.219761\n",
+      "[82]\tvalidation_0-error:0.220015\n",
+      "[83]\tvalidation_0-error:0.217214\n",
+      "[84]\tvalidation_0-error:0.217978\n",
+      "[85]\tvalidation_0-error:0.217723\n",
+      "[86]\tvalidation_0-error:0.217978\n",
+      "[87]\tvalidation_0-error:0.218233\n",
+      "[88]\tvalidation_0-error:0.217469\n",
+      "[89]\tvalidation_0-error:0.216705\n",
+      "[90]\tvalidation_0-error:0.21645\n",
+      "[91]\tvalidation_0-error:0.218487\n",
+      "[92]\tvalidation_0-error:0.218233\n",
+      "[93]\tvalidation_0-error:0.217978\n",
+      "[94]\tvalidation_0-error:0.217214\n",
+      "[95]\tvalidation_0-error:0.217214\n",
+      "[96]\tvalidation_0-error:0.218233\n",
+      "[97]\tvalidation_0-error:0.216196\n",
+      "[98]\tvalidation_0-error:0.216196\n",
+      "[99]\tvalidation_0-error:0.214413\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,\n",
+       "       colsample_bytree=1, gamma=0, learning_rate=0.1, max_delta_step=0,\n",
+       "       max_depth=2, min_child_weight=1, missing=None, n_estimators=100,\n",
+       "       n_jobs=1, nthread=None, objective='binary:logistic', random_state=0,\n",
+       "       reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,\n",
+       "       silent=True, subsample=1)"
+      ]
+     },
+     "execution_count": 208,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "xgbmodel.fit(train_x,train_y,early_stopping_rounds=10,eval_set=[(test_x,test_y)],eval_metric=\"error\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 209,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7855869620575503 auc:  0.86875182287869 f1_score:  0.7971084337349398 \n",
+      "precision:  0.8017450315075133 recall:  0.7925251557259224\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/sklearn/preprocessing/label.py:171: DeprecationWarning: The truth value of an empty array is ambiguous. Returning False, but in future this will result in an error. Use `array.size > 0` to check that an array is not empty.\n",
+      "  if diff:\n"
+     ]
+    }
+   ],
+   "source": [
+    "score = xgbmodel.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = xgbmodel.predict(test_x)\n",
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# path"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 137,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "with open('/home/bil/huangtao/project/data/competition/data_new/path_dict.pickle', 'rb') as f:\n",
+    "    path_dict = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 163,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "39200 / 39262\r"
+     ]
+    }
+   ],
+   "source": [
+    "#------------motif1---------------\n",
+    "path_node = []#[poi*3,co_sq, dis_sq]*5\n",
+    "path_feature = []\n",
+    "flag = 0\n",
+    "for i in range(len(data_cut)):\n",
+    "    flag +=1\n",
+    "    bid1 = data_cut.loc[i,'bid1']\n",
+    "    bid2 = data_cut.loc[i,'bid2']\n",
+    "    pair = bid1 + '#' + bid2\n",
+    "    val = path_dict[pair]#[poi*3,co_sq, dis_sq]*5\n",
+    "    paths = val\n",
+    "    pn = []\n",
+    "    pf = []\n",
+    "    for path in paths:\n",
+    "        \n",
+    "        if path[0] != []:\n",
+    "            pn += [[poi_embed_dict[path[0][0]][0], poi_embed_dict[path[0][1]][0], poi_embed_dict[path[0][2]][0]]]\n",
+    "            feature = path[1] + path[2]\n",
+    "        else:\n",
+    "            pn += [[[0] * 211] * 3]\n",
+    "            feature = [0] * 6\n",
+    "        pf += [feature]\n",
+    "    path_node += [pn]\n",
+    "    path_feature += [pf]\n",
+    "    if flag % 100 == 0:print '%d / %d\\r' %(flag, len(data_cut)),"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 164,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 5, 3, 211) (39262, 5, 6)\n"
+     ]
+    }
+   ],
+   "source": [
+    "path_node = np.array(path_node)\n",
+    "path_feature = np.array(path_feature)\n",
+    "print path_node.shape, path_feature.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 194,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "save...\n",
+      "save...\n"
+     ]
+    }
+   ],
+   "source": [
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/path_node.pickle','wb') as f:\n",
+    "    pickle.dump(path_node,f)\n",
+    "print 'save...'\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/path_feature.pickle','wb') as f:\n",
+    "    pickle.dump(path_feature,f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 145,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "save...\n",
+      "save...\n"
+     ]
+    }
+   ],
+   "source": [
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/path_node.pickle','rb') as f:\n",
+    "    path_node = pickle.load(f)\n",
+    "with open('/home/bil/huangtao/project/data/competition/data_new/gpu_motif/path_feature.pickle','rb') as f:\n",
+    "    path_feature = pickle.load(f)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 153,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(39262, 5, 3, 211) (39262, 5, 6)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print path_node.shape, path_feature.shape"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 196,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "path_f = path_feature[:,0,:]\n",
+    "path_n = path_node[:,0,:,:].reshape(-1,3*211)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 210,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "data_x = np.concatenate([co_feature, bid1_embed, bid2_embed, path_f, region1],axis = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 211,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "[0]\tvalidation_0-error:0.32111\n",
+      "Will train until validation_0-error hasn't improved in 10 rounds.\n",
+      "[1]\tvalidation_0-error:0.307614\n",
+      "[2]\tvalidation_0-error:0.321365\n",
+      "[3]\tvalidation_0-error:0.305067\n",
+      "[4]\tvalidation_0-error:0.314489\n",
+      "[5]\tvalidation_0-error:0.298956\n",
+      "[6]\tvalidation_0-error:0.300993\n",
+      "[7]\tvalidation_0-error:0.299211\n",
+      "[8]\tvalidation_0-error:0.298701\n",
+      "[9]\tvalidation_0-error:0.298192\n",
+      "[10]\tvalidation_0-error:0.291571\n",
+      "[11]\tvalidation_0-error:0.291317\n",
+      "[12]\tvalidation_0-error:0.29208\n",
+      "[13]\tvalidation_0-error:0.289789\n",
+      "[14]\tvalidation_0-error:0.280112\n",
+      "[15]\tvalidation_0-error:0.277311\n",
+      "[16]\tvalidation_0-error:0.280112\n",
+      "[17]\tvalidation_0-error:0.269417\n",
+      "[18]\tvalidation_0-error:0.268144\n",
+      "[19]\tvalidation_0-error:0.268398\n",
+      "[20]\tvalidation_0-error:0.263051\n",
+      "[21]\tvalidation_0-error:0.257703\n",
+      "[22]\tvalidation_0-error:0.256175\n",
+      "[23]\tvalidation_0-error:0.255157\n",
+      "[24]\tvalidation_0-error:0.253374\n",
+      "[25]\tvalidation_0-error:0.252101\n",
+      "[26]\tvalidation_0-error:0.251337\n",
+      "[27]\tvalidation_0-error:0.248026\n",
+      "[28]\tvalidation_0-error:0.246499\n",
+      "[29]\tvalidation_0-error:0.243952\n",
+      "[30]\tvalidation_0-error:0.241915\n",
+      "[31]\tvalidation_0-error:0.247263\n",
+      "[32]\tvalidation_0-error:0.242679\n",
+      "[33]\tvalidation_0-error:0.240896\n",
+      "[34]\tvalidation_0-error:0.240642\n",
+      "[35]\tvalidation_0-error:0.236313\n",
+      "[36]\tvalidation_0-error:0.235039\n",
+      "[37]\tvalidation_0-error:0.237841\n",
+      "[38]\tvalidation_0-error:0.234785\n",
+      "[39]\tvalidation_0-error:0.23835\n",
+      "[40]\tvalidation_0-error:0.236058\n",
+      "[41]\tvalidation_0-error:0.235294\n",
+      "[42]\tvalidation_0-error:0.236822\n",
+      "[43]\tvalidation_0-error:0.235803\n",
+      "[44]\tvalidation_0-error:0.233766\n",
+      "[45]\tvalidation_0-error:0.233257\n",
+      "[46]\tvalidation_0-error:0.232238\n",
+      "[47]\tvalidation_0-error:0.231474\n",
+      "[48]\tvalidation_0-error:0.229183\n",
+      "[49]\tvalidation_0-error:0.23122\n",
+      "[50]\tvalidation_0-error:0.23071\n",
+      "[51]\tvalidation_0-error:0.23071\n",
+      "[52]\tvalidation_0-error:0.228673\n",
+      "[53]\tvalidation_0-error:0.229692\n",
+      "[54]\tvalidation_0-error:0.229947\n",
+      "[55]\tvalidation_0-error:0.228673\n",
+      "[56]\tvalidation_0-error:0.227145\n",
+      "[57]\tvalidation_0-error:0.226636\n",
+      "[58]\tvalidation_0-error:0.227145\n",
+      "[59]\tvalidation_0-error:0.226381\n",
+      "[60]\tvalidation_0-error:0.224599\n",
+      "[61]\tvalidation_0-error:0.22358\n",
+      "[62]\tvalidation_0-error:0.223835\n",
+      "[63]\tvalidation_0-error:0.224344\n",
+      "[64]\tvalidation_0-error:0.225108\n",
+      "[65]\tvalidation_0-error:0.22409\n",
+      "[66]\tvalidation_0-error:0.225363\n",
+      "[67]\tvalidation_0-error:0.22358\n",
+      "[68]\tvalidation_0-error:0.223326\n",
+      "[69]\tvalidation_0-error:0.223326\n",
+      "[70]\tvalidation_0-error:0.22358\n",
+      "[71]\tvalidation_0-error:0.222052\n",
+      "[72]\tvalidation_0-error:0.221798\n",
+      "[73]\tvalidation_0-error:0.220779\n",
+      "[74]\tvalidation_0-error:0.220525\n",
+      "[75]\tvalidation_0-error:0.220525\n",
+      "[76]\tvalidation_0-error:0.221798\n",
+      "[77]\tvalidation_0-error:0.222816\n",
+      "[78]\tvalidation_0-error:0.221543\n",
+      "[79]\tvalidation_0-error:0.221798\n",
+      "[80]\tvalidation_0-error:0.220779\n",
+      "[81]\tvalidation_0-error:0.219761\n",
+      "[82]\tvalidation_0-error:0.220015\n",
+      "[83]\tvalidation_0-error:0.217214\n",
+      "[84]\tvalidation_0-error:0.217978\n",
+      "[85]\tvalidation_0-error:0.217723\n",
+      "[86]\tvalidation_0-error:0.217978\n",
+      "[87]\tvalidation_0-error:0.218233\n",
+      "[88]\tvalidation_0-error:0.217469\n",
+      "[89]\tvalidation_0-error:0.216705\n",
+      "[90]\tvalidation_0-error:0.21645\n",
+      "[91]\tvalidation_0-error:0.218487\n",
+      "[92]\tvalidation_0-error:0.218233\n",
+      "[93]\tvalidation_0-error:0.217978\n",
+      "[94]\tvalidation_0-error:0.217214\n",
+      "[95]\tvalidation_0-error:0.217214\n",
+      "[96]\tvalidation_0-error:0.218233\n",
+      "[97]\tvalidation_0-error:0.216196\n",
+      "[98]\tvalidation_0-error:0.216196\n",
+      "[99]\tvalidation_0-error:0.214413\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,\n",
+       "       colsample_bytree=1, gamma=0, learning_rate=0.1, max_delta_step=0,\n",
+       "       max_depth=2, min_child_weight=1, missing=None, n_estimators=100,\n",
+       "       n_jobs=1, nthread=None, objective='binary:logistic', random_state=0,\n",
+       "       reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,\n",
+       "       silent=True, subsample=1)"
+      ]
+     },
+     "execution_count": 211,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "import xgboost as xgb\n",
+    "xgbmodel = xgb.XGBClassifier(n_estimators=100, \n",
+    "                             silent=True, \n",
+    "                             objective='binary:logistic',\n",
+    "                             max_depth=2, \n",
+    "                             learning_rate=0.1)\n",
+    "xgbmodel.fit(train_x,train_y,early_stopping_rounds=10,eval_set=[(test_x,test_y)],eval_metric=\"error\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 212,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "acc:  0.7855869620575503 auc:  0.86875182287869 f1_score:  0.7971084337349398 \n",
+      "precision:  0.8017450315075133 recall:  0.7925251557259224\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/home/bil/anaconda2/lib/python2.7/site-packages/sklearn/preprocessing/label.py:171: DeprecationWarning: The truth value of an empty array is ambiguous. Returning False, but in future this will result in an error. Use `array.size > 0` to check that an array is not empty.\n",
+      "  if diff:\n"
+     ]
+    }
+   ],
+   "source": [
+    "score = xgbmodel.predict_proba(test_x)  #预测分类概率\n",
+    "predict_y = xgbmodel.predict(test_x)\n",
+    "pp = [int(x[1]+0.5) for x in score]\n",
+    "get_score(test_y,score[:,1],pp)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

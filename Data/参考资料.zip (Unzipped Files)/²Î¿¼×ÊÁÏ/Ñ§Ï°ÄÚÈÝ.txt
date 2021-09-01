@@ -1,0 +1,16 @@
+平台：
+python
+pip工具
+装包
+IDE：jupyter nobook
+
+知识点：
+机器学习
+graph embedding
+node2vec
+
+学习资料
+https://blog.csdn.net/u012151283/article/details/87081272
+https://blog.csdn.net/myofficials/article/details/78903118
+数据
+https://openflights.org/data.html
